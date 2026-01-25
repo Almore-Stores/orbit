@@ -5,7 +5,7 @@ import { themeState } from "@/state/theme";
 import { FC } from "@/types/settingsComponent";
 import { Chart, ChartData, ScatterDataPoint } from "chart.js";
 import { Line } from "react-chartjs-2";
-import type { ActivitySession, Quota, inactivityNotice } from "@prisma/client";
+import { ActivitySession, Quota, inactivityNotice } from "@prisma/client";
 import Tooltip from "@/components/tooltip";
 import moment from "moment";
 import { Dialog, Transition, Tab } from "@headlessui/react";

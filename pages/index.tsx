@@ -203,12 +203,11 @@ const Home: NextPage = () => {
 			return
 		}
 
-		if (robloxConfig.redirect_wid && robloxConfig.redirect_wid.length >= 1 && login.workspaces?.length) {
-			const redirectWorkspaceId = Number(robloxConfig.redirect_wid)
-			const hasAccess = login.workspaces.some(workspace => workspace.groupId === redirectWorkspaceId)
+		if ( login.workspaces?.length) {
+			const hasAccess = login.workspaces.some(workspace => workspace.groupId === 16109128)
 
 			if (hasAccess) {
-				gotoWorkspace(redirectWorkspaceId)
+				gotoWorkspace(16109128)
 			} else {
 				router.push('/404')
 			}

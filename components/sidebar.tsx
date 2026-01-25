@@ -107,7 +107,8 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
   const [theme, setTheme] = useRecoilState(themeState)
   const [showOrbitInfo, setShowOrbitInfo] = useState(false);
   const [showCopyright, setShowCopyright] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelog, setChangelog] = useState<{ title: string, link: string, pubDate: string, content: string }[]>([]);
   const [changelogLoading, setChangelogLoading] = useState(false);
@@ -251,6 +252,25 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
     }
   }, [workspace.groupId, noticesEnabled, workspace.yourPermission]);
 
+  useEffect(() => {
+  
+		const checkOwnerStatus = async () => {
+			try {
+				const response = await axios.get("/api/auth/checkOwner")
+				if (response.data.success) {
+					setIsOwner(response.data.isOwner)
+				}
+			} catch (error: any) {
+				if (error.response?.status !== 401) {
+					console.error("Failed to check owner status:", error)
+				}
+			}
+		}
+  		checkOwnerStatus()
+	}, [])
+
+	console.log(isOwner)
+
   return (
     <>
       {!isMobileMenuOpen && (
@@ -285,7 +305,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
           )}
         >
           <div className="h-full flex flex-col p-4 overflow-y-auto pb-20 lg:pb-4">
-            <div className="relative" ref={workspaceListboxWrapperRef}>
+            { isOwner ?? <div className="relative" ref={workspaceListboxWrapperRef}>
               <Listbox
                 value={workspace.groupId}
                 onChange={(id) => {
@@ -383,7 +403,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                   )}
                 </Listbox.Options>
               </Listbox>
-            </div>
+            </div>}
 
             <nav className="flex-1 space-y-0.5 mt-2">
               {pages.map((page) =>
@@ -598,12 +618,21 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                 </div>
 
                 <div className="space-y-4">
+					<div>
+                    <h3 className="text-sm font-medium text-zinc-900 dark:text-white mb-1">
+                      Almore features, enhancements, and modifications:
+                    </h3>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Copyright © {new Date().getFullYear()} Almore. All rights reserved.
+                    </p>
+                  </div>
+
                   <div>
                     <h3 className="text-sm font-medium text-zinc-900 dark:text-white mb-1">
                       Orbit features, enhancements, and modifications:
                     </h3>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Copyright © 2025 Planetary. All rights reserved.
+                      Copyright © {new Date().getFullYear()} Planetary. All rights reserved.
                     </p>
                   </div>
 
@@ -646,7 +675,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                     Orbit
                   </p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    © 2025 Planetary — All rights reserved.
+                    © {new Date().getFullYear()} Planetary — All rights reserved.
                   </p>
                 </div>
           

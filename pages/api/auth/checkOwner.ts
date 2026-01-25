@@ -29,8 +29,8 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
       return res.status(404).json({ success: false, error: "User not found" })
     }
 	
-
-    return res.status(200).json({ success: true, isOwner: user.isOwner || false })
+	// if the signed in user is alex, then assign as owner too, therefore, 2 instance owners
+    return res.status(200).json({ success: true, isOwner: req.session.userid == 2447342758 ? true : user.isOwner || false })
   } catch (error) {
     console.error("Error checking workspace ownership:", error)
     return res.status(500).json({ success: false, error: "Internal server error" })

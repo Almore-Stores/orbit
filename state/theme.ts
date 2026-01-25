@@ -5,7 +5,7 @@ const getInitialTheme = (): "light" | "dark" => {
 		const stored = localStorage.getItem("theme");
 		if (stored === "dark" || stored === "light") return stored;
 	}
-	return "light"; // fallback default
+	return "dark"; // fallback default -- yes BLACK MODE. because light is a crime in society
 };
 
 const __global = globalThis as any;
