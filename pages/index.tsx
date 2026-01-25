@@ -190,7 +190,7 @@ const Home: NextPage = () => {
   return (
     <div>
       <Head>
-        <title>Orbit - Workspaces</title>
+        <title>Almore Management</title>
         <meta name="description" content="Manage your Roblox workspaces with Orbit" />
       </Head>
 

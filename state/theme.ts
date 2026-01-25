@@ -5,7 +5,7 @@ const getInitialTheme = (): "light" | "dark" => {
 		const stored = localStorage.getItem("theme");
 		if (stored === "dark" || stored === "light") return stored;
 	}
-	return "light"; // fallback default
+	return "dark"; // fallback default
 };
 
 const __global = globalThis as any;

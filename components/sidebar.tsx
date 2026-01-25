@@ -436,46 +436,6 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                   >
                     <IconCopyright className="w-4 h-4" />
                   </button>
-                  <a
-                    href="https://docs.planetaryapp.us"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 hover:text-primary transition-all duration-300"
-                    title="Documentation"
-                  >
-                    <IconBook className="w-4 h-4" />
-                  </a>
-                  <a
-                    href="https://github.com/planetaryorbit/orbit"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 hover:text-primary transition-all duration-300"
-                    title="GitHub"
-                  >
-                    <IconBrandGithub className="w-4 h-4" />
-                  </a>
-                  <a
-                    href="https://feedback.planetaryapp.us/bugs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 hover:text-primary transition-all duration-300"
-                    title="Bug Reports"
-                  >
-                    <IconBug className="w-4 h-4" />
-                  </a>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-zinc-500">
-                  <span>Orbit v{packageJson.version}</span>
-                  <button
-                    onClick={() => {
-                      setShowChangelog(true);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-primary transition-all duration-300"
-                    title="Changelog"
-                  >
-                    <IconHistory className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
             )}
