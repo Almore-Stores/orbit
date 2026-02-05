@@ -119,6 +119,7 @@ const Home: NextPage = () => {
 		checkOwnerStatus()
 	}, [])
 
+<<<<<<< HEAD
 	const checkRoles = async () => {
 		const request = axios
 			.post("/api/auth/checkRoles", {})
@@ -126,6 +127,14 @@ const Home: NextPage = () => {
 				router.reload()
 			})
 			.catch(console.error)
+=======
+  return (
+    <div>
+      <Head>
+        <title>Almore Management</title>
+        <meta name="description" content="Manage your Roblox workspaces with Orbit" />
+      </Head>
+>>>>>>> df5fe157747e255433e6e19194f21e4b1a0e229f
 
 		toast.promise(request, {
 			loading: "Checking roles...",
