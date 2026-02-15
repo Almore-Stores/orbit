@@ -23,6 +23,7 @@ import {
   IconTrash,
   IconClipboardList,
   IconArrowLeft,
+  IconSearch,
 } from "@tabler/icons-react";
 
 type Form = {
@@ -126,6 +127,16 @@ const Allies: pageWithLayout<pageProps> = (props) => {
   };
 
   const [reps, setReps] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const allies: any = props.infoAllies;
+  const users: any = props.infoUsers;
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((user: any) =>
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [users, searchQuery]);
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = event.target;
@@ -225,9 +236,6 @@ const Allies: pageWithLayout<pageProps> = (props) => {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
-  const allies: any = props.infoAllies;
-  const users: any = props.infoUsers;
-
   return (
     <>
       <Toaster position="bottom-center" />
@@ -240,7 +248,7 @@ const Allies: pageWithLayout<pageProps> = (props) => {
                 Alliances
               </h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Manage and view your group’s alliances with other communities
+                Manage and view your group's alliances with other communities
               </p>
             </div>
           </div>
@@ -427,35 +435,53 @@ const Allies: pageWithLayout<pageProps> = (props) => {
                                 <p className="text-sm text-zinc-500 mb-2">
                                   {reps.length} Reps Selected (Minimum 1)
                                 </p>
+                                <div className="relative mb-3">
+                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <IconSearch className="h-4 w-4 text-zinc-400" />
+                                  </div>
+                                  <input
+                                    type="text"
+                                    placeholder="Search representatives..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                                  />
+                                </div>
                                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                                  {users.map((user: any) => (
-                                    <label
-                                      key={user.userid}
-                                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        value={user.userid}
-                                        onChange={handleCheckboxChange}
-                                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                                      />
-                                      <div
-                                        className={`w-8 h-8 rounded-full flex items-center justify-center ${getRandomBg(
-                                          user.userid
-                                        )} overflow-hidden`}
+                                  {filteredUsers.length === 0 ? (
+                                    <p className="text-sm text-zinc-500 text-center py-4">
+                                      No representatives found
+                                    </p>
+                                  ) : (
+                                    filteredUsers.map((user: any) => (
+                                      <label
+                                        key={user.userid}
+                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer"
                                       >
-                                        <img
-                                          src={user.thumbnail}
-                                          className="w-full h-full object-cover"
-                                          alt={user.username}
-                                          style={{ background: "transparent" }}
+                                        <input
+                                          type="checkbox"
+                                          value={user.userid}
+                                          onChange={handleCheckboxChange}
+                                          className="rounded border-gray-300 text-primary focus:ring-primary"
                                         />
-                                      </div>
-                                      <span className="text-sm text-zinc-900 dark:text-white">
-                                        {user.username}
-                                      </span>
-                                    </label>
-                                  ))}
+                                        <div
+                                          className={`w-8 h-8 rounded-full flex items-center justify-center ${getRandomBg(
+                                            user.userid
+                                          )} overflow-hidden`}
+                                        >
+                                          <img
+                                            src={user.thumbnail}
+                                            className="w-full h-full object-cover"
+                                            alt={user.username}
+                                            style={{ background: "transparent" }}
+                                          />
+                                        </div>
+                                        <span className="text-sm text-zinc-900 dark:text-white">
+                                          {user.username}
+                                        </span>
+                                      </label>
+                                    ))
+                                  )}
                                 </div>
                               </>
                             )}

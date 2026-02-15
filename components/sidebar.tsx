@@ -578,7 +578,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                 <div className="space-y-4">
 					<div>
                     <h3 className="text-sm font-medium text-zinc-900 dark:text-white mb-1">
-                      Almore features, enhancements, and modifications:
+                      Almore Shopping features, enhancements, and modifications:
                     </h3>
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">
                       Copyright © {new Date().getFullYear()} Almore. All rights reserved.
@@ -627,6 +627,17 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                     <IconX className="w-5 h-5 text-zinc-500" />
                   </button>
                 </div>
+
+				  <div className="mb-4">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">
+                    Almore Shopping
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    © {new Date().getFullYear()} Almore Shopping — All rights reserved.
+                  </p>
+                </div>
+          
+                <div className="border-t border-zinc-300 dark:border-zinc-700 my-4" />
           
                 <div className="mb-4">
                   <p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">
