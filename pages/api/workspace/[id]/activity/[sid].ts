@@ -21,7 +21,6 @@ export async function handler(
 ) {
 	console.log(req)
 	if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' });
-	if (!req.session.userid) return res.status(401).json({ success: false, error: 'Not logged in' });
 	if (!req.query.sid) return res.status(400).json({ success: false, error: "ID missing" });
 
 	const session = await prisma.activitySession.findUnique({
