@@ -1,7 +1,6 @@
 import workspace from "@/layouts/workspace";
 import { pageWithLayout } from "@/layoutTypes";
 import { loginState, workspacestate } from "@/state";
-import { getConfig, setConfig } from "@/utils/configEngine";
 import axios from "axios";
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo, Fragment } from "react";
@@ -30,7 +29,6 @@ import Tooltip from "@/components/tooltip";
 import randomText from "@/utils/randomText";
 import toast, { Toaster } from "react-hot-toast";
 import { Dialog, Transition } from "@headlessui/react";
-import * as crypto from "crypto";
 
 const Activity: pageWithLayout = () => {
 	const router = useRouter();
