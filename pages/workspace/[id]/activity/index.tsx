@@ -269,7 +269,7 @@ const Activity: pageWithLayout = () => {
 			const sessionResponse = await axios.get(
 				`/api/workspace/${id}/activity/${sessionId}`, {
 					headers: {
-						authorization: "1e7fc536808e36fb5d3af8b5e8b68afb"
+						authorization: accessApiKey
 					}
 				}
 			);
