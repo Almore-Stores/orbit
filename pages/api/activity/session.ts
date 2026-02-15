@@ -24,10 +24,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
   const { authorization } = req.headers;
   const { userid, placeid, idleTime, messages } = req.body;
   const { type } = req.query;
-  if (!authorization)
-    return res
-      .status(400)
-      .json({ success: false, error: "Authorization key missing" });
+  
   if (!userid || isNaN(userid))
     return res
       .status(400)
@@ -38,20 +35,50 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
       .json({ success: false, error: "Missing query type (create or end)" });
 
   try {
-    const config = await prisma.config.findFirst({
-      where: {
-        value: {
-          path: ["key"],
-          equals: authorization,
-        },
-      },
-    });
+    let config;
+    let groupId;
 
-    if (!config) {
-      return res.status(401).json({ success: false, error: "Unauthorized" });
+    // Try authorization header first (for external API calls like from Roblox)
+    if (authorization) {
+      config = await prisma.config.findFirst({
+        where: {
+          value: {
+            path: ["key"],
+            equals: authorization,
+          },
+        },
+      });
+
+      if (!config) {
+        return res.status(401).json({ success: false, error: "Invalid authorization key" });
+      }
+      groupId = config.workspaceGroupId;
+    } 
+    // Fallback to session authentication (for authenticated web users)
+    else if (req.session?.user?.userId) {
+      // User is authenticated via session, use workspace from body
+      const workspaceId = req.body.workspaceId;
+      
+      if (!workspaceId) {
+        return res.status(400).json({ success: false, error: "Workspace ID required for session-based auth" });
+      }
+
+      config = await prisma.config.findFirst({
+        where: {
+          workspaceGroupId: BigInt(workspaceId),
+        },
+      });
+
+      if (!config) {
+        return res.status(404).json({ success: false, error: "Workspace not found" });
+      }
+      groupId = config.workspaceGroupId;
+    } 
+    // No authentication provided
+    else {
+      return res.status(401).json({ success: false, error: "Authorization required" });
     }
 
-    const groupId = config.workspaceGroupId;
     const parsedConfig = JSON.parse(JSON.stringify(config.value));
 
     const userRank = await noblox
@@ -70,6 +97,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
     const username = await getUsername(userid);
     const picture = await getThumbnail(userid); // ✅ Fixed: Added await
 
+    // Ensure user exists in database before any operations that reference it
     try {
       await prisma.user.upsert({
         where: { userid: BigInt(userid) },
@@ -83,8 +111,10 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
         .json({ success: false, error: "Failed to create/update user" });
     }
 
+    // Now that user exists, check permissions (which may create rank records)
     await checkSpecificUser(userid);
 
+    // Handle session type
     if (type === "create") {
       const existing = await prisma.activitySession.findFirst({
         where: {
