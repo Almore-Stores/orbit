@@ -57,7 +57,6 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
     const userRank = await noblox
       .getRankInGroup(groupId, userid)
       .catch(() => null);
-    await checkSpecificUser(userid);
 
     if (parsedConfig.role && (!userRank || userRank <= parsedConfig.role)) {
       console.log(
@@ -69,15 +68,23 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
     }
 
     const username = await getUsername(userid);
-    const picture = getThumbnail(userid);
+    const picture = await getThumbnail(userid); // ✅ Fixed: Added await
 
-    await prisma.user.upsert({
-      where: { userid: BigInt(userid) },
-      update: { username, picture },
-      create: { userid: BigInt(userid), username, picture },
-    });
+    try {
+      await prisma.user.upsert({
+        where: { userid: BigInt(userid) },
+        update: { username, picture },
+        create: { userid: BigInt(userid), username, picture },
+      });
+    } catch (error) {
+      console.error(`[ERROR] Failed to upsert user ${userid}:`, error);
+      return res
+        .status(500)
+        .json({ success: false, error: "Failed to create/update user" });
+    }
 
-    // Handle session type
+    await checkSpecificUser(userid);
+
     if (type === "create") {
       const existing = await prisma.activitySession.findFirst({
         where: {
