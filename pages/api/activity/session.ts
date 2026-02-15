@@ -65,7 +65,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
 
       config = await prisma.config.findFirst({
         where: {
-          workspaceGroupId: BigInt(workspaceId),
+          workspaceGroupId: Number(workspaceId),
         },
       });
 
