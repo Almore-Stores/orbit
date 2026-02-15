@@ -267,7 +267,11 @@ const Activity: pageWithLayout = () => {
 
 		try {
 			const sessionResponse = await axios.get(
-				`/api/workspace/${id}/activity/${sessionId}`
+				`/api/workspace/${id}/activity/${sessionId}`, {
+					headers: {
+						Authorization: accessApiKey
+					}
+				}
 			);
 			if (sessionResponse.status !== 200) {
 				toast.error("Could not fetch session details.");
