@@ -365,34 +365,6 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
 									>
 										<IconCopyright className="w-4 h-4" />
 									</button>
-									{
-										isOwner ?? (
-											<a
-												href="https://docs.planetaryapp.us"
-												target="_blank"
-												rel="noopener noreferrer"
-												className="p-2 rounded-lg hover:bg-white dark:hover:bg-zinc-800 text-zinc-400 hover:text-[color:rgb(var(--group-theme))] transition-all duration-200"
-												title="Documentation"
-											>
-												<IconBook className="w-4 h-4" />
-											</a>
-										)
-									}
-								</div>
-								<div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-									<span className="px-2 py-1 rounded-md bg-zinc-200/60 dark:bg-zinc-700/60">
-										Orbit v{packageJson.version}
-									</span>
-									<button
-										onClick={() => {
-											setShowChangelog(true);
-											setIsMobileMenuOpen(false);
-										}}
-										className="p-1.5 rounded-md hover:bg-white dark:hover:bg-zinc-800 hover:text-[color:rgb(var(--group-theme))] transition-all duration-200"
-										title="Changelog"
-									>
-										<IconHistory className="w-3.5 h-3.5" />
-									</button>
 								</div>
 							</div>
 						)}
@@ -496,6 +468,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
 								<p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">Almore</p>
 								<p className="text-sm text-zinc-500 dark:text-zinc-400">© 2026 Almore Shopping — All rights reserved.</p>
 							</div>
+							<div className="border-t border-zinc-200 dark:border-zinc-700" />
 							<div>
 								<p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">Orbit</p>
 								<p className="text-sm text-zinc-500 dark:text-zinc-400">© 2025 Planetary — All rights reserved.</p>
