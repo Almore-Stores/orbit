@@ -67,7 +67,12 @@ export function HelpProvider({ children }: { children: React.ReactNode }) {
                 <IconX className="w-5 h-5 text-zinc-500" />
               </button>
             </div>
-            <div className="mb-4">
+			<div className="mb-4">
+              <p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">Almore Shopping</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">© 2026 Almore Shopping — All rights reserved.</p>
+            </div>
+            <div className="border-t border-zinc-200 dark:border-zinc-700 my-4" />
+            <div>
               <p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">Orbit</p>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">© 2025 Planetary — All rights reserved.</p>
             </div>
@@ -149,33 +154,6 @@ export function HelpFloatingButton() {
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">v{packageJson.version}</p>
         </div>
         <div className="h-px bg-zinc-200/80 dark:bg-zinc-600/80 mx-3 mb-2" />
-        <a
-          href="https://docs.planetaryapp.us"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/70 transition-colors"
-        >
-          <IconBook className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" stroke={1.5} />
-          <span>Documentation</span>
-        </a>
-        <a
-          href="https://github.com/planetaryorbit/orbit"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/70 transition-colors"
-        >
-          <IconBrandGithub className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" stroke={1.5} />
-          <span>GitHub</span>
-        </a>
-        <a
-          href="https://feedback.planetaryapp.us/bugs"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/70 transition-colors"
-        >
-          <IconBug className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" stroke={1.5} />
-          <span>Bug Reports</span>
-        </a>
         <Menu.Item>
           {({ active }) => (
             <button
