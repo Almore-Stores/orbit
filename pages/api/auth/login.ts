@@ -52,53 +52,6 @@ async function getCachedGroupInfo(groupId: number) {
   }
 }
 
-// Rate limtning for login
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 30, // 30req/15 mins
-  message: "Slow down! Too many login attempts, please try again later.",
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Cloud instances (or if they self host proxied through cloudflare) use cloudflare, so we need to
-    // account for the possibility that the instance MIGHT be proxied through cloudflare or might not be
-    const cfConnectingIp = req.headers["cf-connecting-ip"];
-    const xRealIp = req.headers["x-real-ip"];
-    const xForwardedFor = req.headers["x-forwarded-for"];
-    const remoteAddress = req.socket.remoteAddress;
-
-    // Use CF if available, otherwise fallback to other headers
-    return (
-      (cfConnectingIp as string) ||
-      (xRealIp as string) ||
-      (xForwardedFor as string)?.split(",")[0] ||
-      remoteAddress ||
-      "unknown"
-    );
-  },
-});
-
-const applyRateLimit = (handler: NextApiHandler) => {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
-    try {
-      await new Promise<void>((resolve, reject) => {
-        limiter(req as any, res as any, (result: unknown) => {
-          if (result instanceof Error) reject(result);
-          resolve();
-        });
-      });
-      return handler(req, res);
-    } catch (error) {
-      return res.status(429).json({
-        success: false,
-        error: "Slow down! Too many login attempts, please try again later.",
-      });
-    }
-  };
-};
-
-export default withSessionRoute(applyRateLimit(handler));
-
 type User = {
   userId: number;
   username: string;
