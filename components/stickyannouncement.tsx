@@ -3,12 +3,10 @@ import { IconX, IconPin, IconPencil, IconCheck } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import axios from "axios";
 import toast from "react-hot-toast";
-
-import { loginState, workspacestate } from "@/state"
 import { useRecoilState } from "recoil";
-import randomText from "@/utils/randomText";
+import { loginState } from "@/state";
 
-const ANNOUNCEMENT_KEY = "announcementDismissed_v2";
+const ANNOUNCEMENT_KEY = "announcementDismissed_v3";
 
 interface Section {
   title: string;
@@ -26,27 +24,37 @@ interface Announcement {
 
 const defaultAnnouncement: Announcement = {
   title: "Planetary",
-  subtitle: "Update: v2.1.8 is now live!",
+  subtitle: "Update: v2.1.10 is now live!",
   sections: [
     {
       title: "",
       content:
-        "We're keeping this going with a well needed update. Here are a few highlights from this week's work and community feedback.",
+        "This one's a big one. From a full platform redesign to brand new features — here's a peek at what dropped this week.",
     },
     {
-      title: "💼 Permissions",
+      title: "📱 Mobile bottom bar",
       content:
-        "We now have over 50 permissions available to assign to roles!",
+        "Navigation on mobile just got a whole lot better. A new bottom bar keeps everything within reach, right where your thumbs are.",
     },
     {
-      title: "🧹",
+      title: "🛠️ Staff views on mobile",
       content:
-        "Improved overall performance and stability across the board.",
+        "Staff dashboards are now properly optimized for mobile devices — no more squinting or awkward scrolling.",
+    },
+    {
+      title: "🎵 Music quotes",
+      content:
+        "We've introduced music quotes — a new way to share what you're listening to and spark conversations around it.",
+    },
+    {
+      title: "✨ Platform redesign",
+      content:
+        "Planetary has had a major glow-up. Cleaner, faster, and more intuitive across the board.",
     },
     {
       title: "",
       content:
-        "That's a wrap for this week — we'll see you soon for more updates from Team Planetary.",
+        "And honestly? There's a lot more we didn't mention — you'll just have to discover it yourself. 👀",
     },
   ],
   editorUsername: null,
@@ -131,9 +139,6 @@ export default function StickyNoteAnnouncement() {
     </p>
   </div>
 </div>
-
-
-    
     </div>
   );
 }
