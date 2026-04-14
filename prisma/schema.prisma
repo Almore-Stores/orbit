@@ -11,6 +11,7 @@ model workspace {
   groupName         String?
   groupLogo         String?
   lastSynced        DateTime?
+  customName        String?
   adjustments       ActivityAdjustment[]
   activityHistory   ActivityHistory[]
   activityResets    ActivityReset[]
@@ -124,7 +125,7 @@ model role {
   isOwnerRole      Boolean?      @default(false)
   workspaceGroupId Int
   name             String
-  groupRoles       Int[]
+  groupRoles       BigInt[]
   color            String?
   quotaRoles       QuotaRole[]
   workspace        workspace     @relation(fields: [workspaceGroupId], references: [groupId])
