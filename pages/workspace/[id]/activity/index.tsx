@@ -20,10 +20,6 @@ import {
 	IconPlayerPlay,
 	IconMoon,
 	IconTrophy,
-	IconMedal,
-	IconCrown,
-	IconAward,
-	IconLaurelWreath1,
 } from "@tabler/icons-react";
 import Tooltip from "@/components/tooltip";
 import randomText from "@/utils/randomText";
@@ -322,394 +318,226 @@ const Activity: pageWithLayout = () => {
 	return (
 		<div className="pagePadding">
 			<div className="max-w-7xl mx-auto">
-				<div className="flex items-center gap-3 mb-6">
-					<div>
-						<h1 className="text-2xl font-medium text-zinc-900 dark:text-white">
-							Activity Dashboard
-						</h1>
-						<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-							Monitor your performance and track detailed activity metrics
-						</p>
-					</div>
+			<div className="flex items-center gap-4 mb-8">
+				{myData?.picture && (
+					<img
+						src={myData.picture}
+						alt={myData.username}
+						className="w-14 h-14 rounded-full ring-2 ring-primary/20 shadow-md flex-shrink-0 object-cover"
+					/>
+				)}
+				<div>
+					<h1 className="text-2xl font-semibold text-zinc-900 dark:text-white leading-tight">
+						Activity Dashboard
+					</h1>
+					<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+						{myData
+							? `Welcome back, ${myData.username} — here's your activity summary`
+							: "Monitor your performance and track detailed activity metrics"}
+					</p>
 				</div>
+			</div>
 
-				{leaderboardEnabled && topStaff.length > 0 && (
-					<>
-						<div className="mb-8">
-							{leaderboardStyle === "podium" ? (
-								<>
-									<div className="bg-white dark:bg-zinc-800 border border-white/10 rounded-xl p-6 shadow-sm mb-8">
-										<div className="flex items-center gap-3 mb-6">
-											<div className="bg-primary/10 p-3 rounded-xl">
-												<IconTrophy className="w-6 h-6 text-primary" />
-											</div>
-											<div>
-												<h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
-													Leaderboard
-												</h2>
-												<p className="text-sm text-zinc-500 dark:text-zinc-400">
-													Top performers this period
-												</p>
-											</div>
-										</div>
-										<div className="flex items-end justify-center gap-4 sm:gap-6">
-											{topStaff[1] && (
-												<div className="flex flex-col items-center flex-1 max-w-[120px]">
-													<div className="relative mb-4">
-														<div
-															className={`w-20 h-20 rounded-full flex items-center justify-center ${getRandomBg(
-																topStaff[1].userId
-															)}`}
-														>
-															<img
-																src={topStaff[1].picture}
-																alt={topStaff[1].username}
-																className="w-20 h-20 rounded-full border-4 border-gray-400 shadow-lg object-cover"
-																style={{ background: "transparent" }}
-															/>
-														</div>
-														<div className="absolute -top-2 -right-2 bg-white dark:bg-zinc-800 rounded-full p-1">
-															{getPodiumIcon(1)}
-														</div>
-													</div>
-													<div
-														className={`${getPodiumHeight(1)} ${getPodiumColors(
-															1
-														)} border-2 rounded-t-lg w-24 flex flex-col items-center justify-center shadow-lg`}
-													>
-														<span className="text-white font-bold text-lg">
-															2
-														</span>
-													</div>
-													<div className="mt-4 text-center">
-														<p className="font-semibold text-zinc-900 dark:text-white">
-															{topStaff[1].username}
-														</p>
-														<p className="text-sm text-zinc-600 dark:text-zinc-400">
-															{(() => {
-																const minutes = Math.floor(
-																	topStaff[1].ms / 1000 / 60
-																);
-																return `${minutes} ${minutes === 1 ? "minute" : "minutes"
-																	}`;
-															})()}
-														</p>
-													</div>
-												</div>
-											)}
+			{leaderboardEnabled && topStaff.length > 0 && (
+				<div className="mb-8">
+					<div className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-6 shadow-sm">
+						<div className="flex items-center gap-3 mb-8">
+							<div className="bg-primary/10 p-2.5 rounded-xl">
+								<IconTrophy className="w-5 h-5 text-primary" />
+							</div>
+							<div>
+								<h2 className="text-lg font-bold text-zinc-900 dark:text-white">Leaderboard</h2>
+								<p className="text-xs text-zinc-500 dark:text-zinc-400">Top performers this period</p>
+							</div>
+						</div>
 
-											<div className="flex flex-col items-center flex-1 max-w-[140px]">
-												<div className="relative mb-4">
-													<div
-														className={`w-24 h-24 rounded-full flex items-center justify-center ${getRandomBg(
-															topStaff[0].userId
-														)}`}
-													>
+						{(() => {
+							const podiumOrder = [topStaff[1], topStaff[0], topStaff[2]].filter(Boolean);
+							const positions = topStaff[1] ? [2, 1, 3] : [1, 3].filter((_, i) => topStaff[i]);
+
+							const blockHeights = { 1: "h-28", 2: "h-20", 3: "h-14" };
+							const blockColors = {
+								1: "bg-gradient-to-b from-amber-400 to-amber-500",
+								2: "bg-gradient-to-b from-zinc-400 to-zinc-500",
+								3: "bg-gradient-to-b from-amber-600 to-amber-700",
+							};
+							const ringColors = {
+								1: "ring-amber-400",
+								2: "ring-zinc-400",
+								3: "ring-amber-600",
+							};
+							const labelColors = {
+								1: "text-amber-500",
+								2: "text-zinc-400",
+								3: "text-amber-600",
+							};
+							const medals = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+							return (
+								<div className="flex items-end justify-center gap-3 sm:gap-6">
+									{podiumOrder.map((user: any, i: number) => {
+										const pos = topStaff[1] ? [2, 1, 3][i] : [1, 3][i];
+										const minutes = Math.floor(user.ms / 1000 / 60);
+										return (
+											<div key={user.userId} className="flex flex-col items-center flex-1 max-w-[140px]">
+												<div className="flex flex-col items-center mb-2">
+													<span className="text-xl mb-1">{medals[pos as keyof typeof medals]}</span>
+													<div className={`relative ring-4 ${ringColors[pos as keyof typeof ringColors]} ring-offset-2 ring-offset-white dark:ring-offset-zinc-800 rounded-full`}>
 														<img
-															src={topStaff[0].picture}
-															alt={topStaff[0].username}
-															className="w-24 h-24 rounded-full border-4 border-yellow-400 shadow-xl object-cover"
-															style={{ background: "transparent" }}
+															src={user.picture}
+															alt={user.username}
+															className={`rounded-full object-cover ${pos === 1 ? "w-20 h-20" : "w-16 h-16"}`}
 														/>
 													</div>
-													<div className="absolute -top-3 -right-3 bg-white dark:bg-zinc-800 rounded-full p-2">
-														{getPodiumIcon(0)}
-													</div>
-												</div>
-												<div
-													className={`${getPodiumHeight(0)} ${getPodiumColors(
-														0
-													)} border-2 rounded-t-lg w-28 flex flex-col items-center justify-center shadow-xl relative`}
-												>
-													<div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-														<div className="bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-															CHAMPION
-														</div>
-													</div>
-													<span className="text-white font-bold text-xl">
-														1
-													</span>
-												</div>
-												<div className="mt-4 text-center">
-													<p className="font-bold text-lg text-zinc-900 dark:text-white">
-														{topStaff[0].username}
+													<p className={`mt-2 font-bold text-sm text-zinc-900 dark:text-white text-center truncate w-full ${pos === 1 ? "text-base" : ""}`}>
+														{user.username}
 													</p>
-													<p className="text-sm text-zinc-600 dark:text-zinc-400">
-														{(() => {
-															const minutes = Math.floor(
-																topStaff[0].ms / 1000 / 60
-															);
-															return `${minutes} ${minutes === 1 ? "minute" : "minutes"
-																}`;
-														})()}
+													<p className={`text-xs font-semibold ${labelColors[pos as keyof typeof labelColors]}`}>
+														{formatMinutes(minutes)}
 													</p>
 												</div>
-											</div>
-
-											{topStaff[2] && (
-												<div className="flex flex-col items-center flex-1 max-w-[120px]">
-													<div className="relative mb-4">
-														<div
-															className={`w-20 h-20 rounded-full flex items-center justify-center ${getRandomBg(
-																topStaff[2].userId
-															)}`}
-														>
-															<img
-																src={topStaff[2].picture}
-																alt={topStaff[2].username}
-																className="w-20 h-20 rounded-full border-4 border-amber-600 shadow-lg object-cover"
-																style={{ background: "transparent" }}
-															/>
-														</div>
-														<div className="absolute -top-2 -right-2 bg-white dark:bg-zinc-800 rounded-full p-1">
-															{getPodiumIcon(2)}
-														</div>
-													</div>
-													<div
-														className={`${getPodiumHeight(2)} ${getPodiumColors(
-															2
-														)} border-2 rounded-t-lg w-20 flex flex-col items-center justify-center shadow-lg`}
-													>
-														<span className="text-white font-bold text-base">
-															3
-														</span>
-													</div>
-													<div className="mt-4 text-center">
-														<p className="font-semibold text-zinc-900 dark:text-white">
-															{topStaff[2].username}
-														</p>
-														<p className="text-sm text-zinc-600 dark:text-zinc-400">
-															{(() => {
-																const minutes = Math.floor(
-																	topStaff[2].ms / 1000 / 60
-																);
-																return `${minutes} ${minutes === 1 ? "minute" : "minutes"
-																	}`;
-															})()}
-														</p>
-													</div>
+												<div className={`w-full rounded-t-xl ${blockHeights[pos as keyof typeof blockHeights]} ${blockColors[pos as keyof typeof blockColors]} flex items-center justify-center shadow-lg`}>
+													<span className="text-white font-black text-2xl opacity-60">{pos}</span>
 												</div>
-											)}
-										</div>
-									</div>
-								</>
-							) : (
-								<>
-									<div className="bg-white dark:bg-zinc-800 border border-white/10 rounded-xl p-4 shadow-sm mb-8">
-										<div className="flex items-center gap-3 mb-4">
-											<div className="bg-primary/10 p-3 rounded-xl">
-												<IconTrophy className="w-6 h-6 text-primary" />
 											</div>
-											<div>
-												<h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
-													Leaderboard
-												</h2>
-												<p className="text-sm text-zinc-500 dark:text-zinc-400">
-													Top performers this period
-												</p>
-											</div>
+										);
+									})}
+								</div>
+							);
+						})()}
+
+						{topStaff.length > 3 && (
+							<div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-700 space-y-1.5">
+								{topStaff.slice(3).map((user: any, index: number) => {
+									const minutes = Math.floor(user.ms / 1000 / 60);
+									return (
+										<div key={user.userId} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors">
+											<span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 w-5 text-right flex-shrink-0">{index + 4}</span>
+											<img src={user.picture} alt={user.username} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+											<span className="text-sm font-medium text-zinc-900 dark:text-white flex-1 truncate">{user.username}</span>
+											<span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex-shrink-0">{formatMinutes(minutes)}</span>
 										</div>
-										<div className="space-y-2">
-											{topStaff.slice(0, 3).map((user: any, index: number) => {
-												const position = index + 1;
-												let bgColor = "bg-zinc-50 dark:bg-zinc-700";
-												let positionColor =
-													"bg-zinc-300 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-300";
-												let borderColor = "border-transparent";
-
-												if (position === 1) {
-													bgColor =
-														"bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20";
-													positionColor =
-														"bg-gradient-to-br from-yellow-400 to-amber-500 text-white";
-													borderColor =
-														"border-yellow-300 dark:border-yellow-700";
-												} else if (position === 2) {
-													bgColor =
-														"bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50";
-													positionColor =
-														"bg-gradient-to-br from-gray-400 to-slate-500 text-white";
-													borderColor = "border-gray-300 dark:border-gray-600";
-												} else if (position === 3) {
-													bgColor =
-														"bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20";
-													positionColor =
-														"bg-gradient-to-br from-orange-500 to-amber-600 text-white";
-													borderColor =
-														"border-orange-300 dark:border-orange-700";
-												}
-
-												return (
-													<div
-														key={user.userId}
-														className={`flex items-center justify-between p-2.5 rounded-lg ${bgColor} border ${borderColor} transition-all gap-2`}
-													>
-														<div className="flex items-center gap-2 flex-1 min-w-0">
-															<div
-																className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${positionColor} text-sm flex-shrink-0 shadow-md`}
-															>
-																{position}
-															</div>
-															<div
-																className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${getRandomBg(
-																	user.userId
-																)} ring-2 ring-white dark:ring-zinc-700`}
-															>
-																<img
-																	src={user.picture}
-																	alt={user.username}
-																	className="w-9 h-9 rounded-full border-2 border-white dark:border-zinc-700 shadow-sm object-cover"
-																	style={{ background: "transparent" }}
-																/>
-															</div>
-															<div className="min-w-0 flex-1">
-																<span className="font-semibold text-sm text-zinc-900 dark:text-white truncate block">
-																	{user.username}
-																</span>
-															</div>
-														</div>
-														<div className="text-right flex-shrink-0">
-															<p className="font-bold text-base text-zinc-900 dark:text-white whitespace-nowrap">
-																{(() => {
-																	const minutes = Math.floor(
-																		user.ms / 1000 / 60
-																	);
-																	return `${minutes}m`;
-																})()}
-															</p>
-														</div>
-													</div>
-												);
-											})}
-										</div>
-									</div>
-								</>
-							)}
-						</div>
-					</>
-				)}
-
-				<div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 mb-8">
-					<div className="bg-white dark:bg-zinc-800 rounded-xl p-4 lg:p-6 border border-white/10 min-w-0">
-						<div className="flex items-center justify-between mb-4 lg:mb-6">
-							<div className="min-w-0 flex-1">
-								<h3 className="text-xs lg:text-sm font-medium text-zinc-900 dark:text-zinc-300 uppercase tracking-wide truncate">
-									Active Time
-								</h3>
+									);
+								})}
 							</div>
-							<div className="bg-emerald-500/20 p-2 lg:p-3 rounded-lg">
-								<IconClock className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-400" />
-							</div>
-						</div>
-						<div className="text-2xl lg:text-3xl font-bold mb-1 lg:mb-2 text-zinc-900 dark:text-white">
-							{myData ? myData.minutes : 0}
-						</div>
-						<div className="text-xs lg:text-sm text-zinc-500 dark:text-zinc-400">
-							Time spent
+						)}
+					</div>
+				</div>
+			)}
+
+			<div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+				<div className="bg-white dark:bg-zinc-800 rounded-xl p-5 border border-zinc-200 dark:border-zinc-700">
+					<div className="flex items-center justify-between mb-5">
+						<span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+							Active Time
+						</span>
+						<div className="bg-primary/10 p-2 rounded-lg">
+							<IconClock className="w-4 h-4 text-primary" />
 						</div>
 					</div>
-
-					{idleTimeEnabled && (
-						<div className="bg-white dark:bg-zinc-800 rounded-xl p-4 lg:p-6 border border-white/10 min-w-0">
-							<div className="flex items-center justify-between mb-4 lg:mb-6">
-								<div className="min-w-0 flex-1">
-									<h3 className="text-xs lg:text-sm font-medium text-zinc-900 dark:text-zinc-300 uppercase tracking-wide truncate">
-										Idle Time
-									</h3>
-								</div>
-								<div className="bg-blue-500/20 p-2 lg:p-3 rounded-lg">
-									<IconMoon className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400" />
-								</div>
-							</div>
-							<div className="text-2xl lg:text-3xl font-bold mb-1 lg:mb-2 text-zinc-900 dark:text-white">
-								{myData ? myData.idleTime : 0}
-							</div>
-							<div className="text-xs lg:text-sm text-zinc-500 dark:text-zinc-400">
-								Time spent away from keyboard
-							</div>
-						</div>
-					)}
-
-					<div className="bg-white dark:bg-zinc-800 rounded-xl p-4 lg:p-6 border border-white/10 min-w-0">
-						<div className="flex items-center justify-between mb-4 lg:mb-6">
-							<div className="min-w-0 flex-1">
-								<h3 className="text-xs lg:text-sm font-medium text-zinc-900 dark:text-zinc-300 uppercase tracking-wide truncate">
-									Messages
-								</h3>
-							</div>
-							<div className="bg-purple-500/20 p-2 lg:p-3 rounded-lg">
-								<IconMessageCircle2 className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400" />
-							</div>
-						</div>
-						<div className="text-2xl lg:text-3xl font-bold mb-1 lg:mb-2 text-zinc-900 dark:text-white">
-							{myData ? myData.messages : 0}
-						</div>
-						<div className="text-xs lg:text-sm text-zinc-500 dark:text-zinc-400">
-							Chat messages
-						</div>
+					<div className="text-3xl font-bold text-zinc-900 dark:text-white tabular-nums">
+						{formatMinutes(myData ? myData.minutes : 0)}
 					</div>
-
-					<div className="bg-white dark:bg-zinc-800 rounded-xl p-4 lg:p-6 border border-white/10 min-w-0">
-						<div className="flex items-center justify-between mb-4 lg:mb-6">
-							<div className="min-w-0 flex-1">
-								<h3 className="text-xs lg:text-sm font-medium text-zinc-900 dark:text-zinc-300 uppercase tracking-wide truncate">
-									Total Sessions
-								</h3>
-							</div>
-							<div className="bg-orange-500/20 p-2 lg:p-3 rounded-lg">
-								<IconPlayerPlay className="w-4 h-4 lg:w-5 lg:h-5 text-orange-400" />
-							</div>
-						</div>
-						<div className="text-2xl lg:text-3xl font-bold mb-1 lg:mb-2 text-zinc-900 dark:text-white">
-							{myData ? myData.totalPlaySessions : 0}
-						</div>
-						<div className="text-sm text-zinc-500 dark:text-zinc-400">
-							Play sessions
-						</div>
+					<div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">
+						Time spent in-game
 					</div>
 				</div>
 
-				{myData && (
-					<div className="mb-8">
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-							<div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-								<div className="flex items-center justify-between mb-4">
-									<div>
-										<h3 className="text-sm font-medium text-blue-100 uppercase tracking-wide">
-											Sessions Hosted
-										</h3>
-									</div>
-									<div className="bg-white/20 p-3 rounded-lg">
-										<IconUsers className="w-6 h-6 text-white" />
-									</div>
-								</div>
-								<div className="text-4xl font-bold mb-2 text-white">
-									{myData.sessionsHosted}
-								</div>
-								<div className="text-sm text-blue-100">Sessions you Hosted</div>
+				{idleTimeEnabled && (
+					<div className="bg-white dark:bg-zinc-800 rounded-xl p-5 border border-zinc-200 dark:border-zinc-700">
+						<div className="flex items-center justify-between mb-5">
+							<span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+								Idle Time
+							</span>
+							<div className="bg-primary/10 p-2 rounded-lg">
+								<IconMoon className="w-4 h-4 text-primary" />
 							</div>
-
-							<div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
-								<div className="flex items-center justify-between mb-4">
-									<div>
-										<h3 className="text-sm font-medium text-emerald-100 uppercase tracking-wide">
-											Sessions Attended
-										</h3>
-									</div>
-									<div className="bg-white/20 p-3 rounded-lg">
-										<IconChartBar className="w-6 h-6 text-white" />
-									</div>
-								</div>
-								<div className="text-4xl font-bold mb-2 text-white">
-									{myData.sessionsAttended}
-								</div>
-								<div className="text-sm text-emerald-100">
-									Sessions you participated in
-								</div>
-							</div>
+						</div>
+						<div className="text-3xl font-bold text-zinc-900 dark:text-white tabular-nums">
+							{formatMinutes(myData ? myData.idleTime : 0)}
+						</div>
+						<div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">
+							Away from keyboard
 						</div>
 					</div>
 				)}
+
+				<div className="bg-white dark:bg-zinc-800 rounded-xl p-5 border border-zinc-200 dark:border-zinc-700">
+					<div className="flex items-center justify-between mb-5">
+						<span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+							Messages
+						</span>
+						<div className="bg-primary/10 p-2 rounded-lg">
+							<IconMessageCircle2 className="w-4 h-4 text-primary" />
+						</div>
+					</div>
+					<div className="text-3xl font-bold text-zinc-900 dark:text-white tabular-nums">
+						{myData ? myData.messages.toLocaleString() : 0}
+					</div>
+					<div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">
+						Chat messages sent
+					</div>
+				</div>
+
+				<div className="bg-white dark:bg-zinc-800 rounded-xl p-5 border border-zinc-200 dark:border-zinc-700">
+					<div className="flex items-center justify-between mb-5">
+						<span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+							Play Sessions
+						</span>
+						<div className="bg-primary/10 p-2 rounded-lg">
+							<IconPlayerPlay className="w-4 h-4 text-primary" />
+						</div>
+					</div>
+					<div className="text-3xl font-bold text-zinc-900 dark:text-white tabular-nums">
+						{myData ? myData.totalPlaySessions : 0}
+					</div>
+					<div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">
+						Total play sessions
+					</div>
+				</div>
+			</div>
+
+			{myData && (
+				<div className="mb-8">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+							<div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+							<div className="absolute -right-1 -bottom-8 w-16 h-16 bg-white/10 rounded-full" />
+							<div className="relative flex items-center justify-between mb-5">
+								<span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">
+									Sessions Hosted
+								</span>
+								<div className="bg-white/20 p-2.5 rounded-lg">
+									<IconUsers className="w-5 h-5 text-white" />
+								</div>
+							</div>
+							<div className="relative text-4xl font-bold text-white tabular-nums mb-1">
+								{myData.sessionsHosted}
+							</div>
+							<div className="relative text-sm text-blue-100">Sessions you led</div>
+						</div>
+
+						<div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
+							<div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+							<div className="absolute -right-1 -bottom-8 w-16 h-16 bg-white/10 rounded-full" />
+							<div className="relative flex items-center justify-between mb-5">
+								<span className="text-xs font-semibold text-emerald-100 uppercase tracking-wider">
+									Sessions Attended
+								</span>
+								<div className="bg-white/20 p-2.5 rounded-lg">
+									<IconChartBar className="w-5 h-5 text-white" />
+								</div>
+							</div>
+							<div className="relative text-4xl font-bold text-white tabular-nums mb-1">
+								{myData.sessionsAttended}
+							</div>
+							<div className="relative text-sm text-emerald-100">
+								Sessions you participated in
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 
 				{myQuotas.length > 0 && (
 					<div className="bg-white dark:bg-zinc-800 rounded-xl p-5 shadow-sm mb-6">
@@ -1295,6 +1123,13 @@ const BG_COLORS = [
 	"bg-red-200",
 ];
 
+function formatMinutes(minutes: number): string {
+	if (minutes < 60) return `${minutes}m`;
+	const h = Math.floor(minutes / 60);
+	const m = minutes % 60;
+	return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function getRandomBg(userid: string, username?: string) {
 	const key = `${userid ?? ""}:${username ?? ""}`;
 	let hash = 5381;
@@ -1305,44 +1140,6 @@ function getRandomBg(userid: string, username?: string) {
 	return BG_COLORS[index];
 }
 
-const getPodiumIcon = (position: number) => {
-	switch (position) {
-		case 0:
-			return <IconCrown className="w-8 h-8 text-yellow-500" />;
-		case 1:
-			return <IconMedal className="w-7 h-7 text-gray-400" />;
-		case 2:
-			return <IconAward className="w-6 h-6 text-amber-600" />;
-		default:
-			return null;
-	}
-};
-
-const getPodiumHeight = (position: number) => {
-	switch (position) {
-		case 0:
-			return "h-32";
-		case 1:
-			return "h-24";
-		case 2:
-			return "h-20";
-		default:
-			return "h-16";
-	}
-};
-
-const getPodiumColors = (position: number) => {
-	switch (position) {
-		case 0:
-			return "bg-gradient-to-t from-yellow-400 to-yellow-300 border-yellow-500";
-		case 1:
-			return "bg-gradient-to-t from-gray-400 to-gray-300 border-gray-500";
-		case 2:
-			return "bg-gradient-to-t from-amber-600 to-amber-500 border-amber-700";
-		default:
-			return "bg-gradient-to-t from-zinc-300 to-zinc-200 border-zinc-400";
-	}
-};
 
 Activity.layout = workspace;
 
