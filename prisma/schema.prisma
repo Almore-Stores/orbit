@@ -12,6 +12,7 @@ model workspace {
   groupLogo         String?
   lastSynced        DateTime?
   customName        String?
+  memberCount       Int?
   adjustments       ActivityAdjustment[]
   activityHistory   ActivityHistory[]
   activityResets    ActivityReset[]
@@ -63,6 +64,7 @@ model user {
   birthdayDay          Int?
   birthdayMonth        Int?
   discordUser          DiscordUser?
+  googleUser           GoogleUser?
   adjustmentsMade      ActivityAdjustment[]   @relation("AdjustmentActor")
   adjustmentsReceived  ActivityAdjustment[]   @relation("AdjustmentUser")
   activityHistory      ActivityHistory[]
@@ -99,6 +101,17 @@ model DiscordUser {
   accessToken   String?
   refreshToken  String?
   expireToken   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          user?     @relation(fields: [robloxUserId], references: [userid])
+}
+
+model GoogleUser {
+  googleUserId  String    @id
+  robloxUserId  BigInt?   @unique
+  username      String
+  avatar        String?
+  email         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   user          user?     @relation(fields: [robloxUserId], references: [userid])
@@ -456,6 +469,8 @@ model workspaceMember {
   timezone            String?
   discordId           String?
   isAdmin             Boolean?            @default(false)
+  introNote           String?
+  introSong           String?
   user                user                @relation(fields: [userId], references: [userid])
   workspace           workspace           @relation(fields: [workspaceGroupId], references: [groupId])
   lineManager         user?               @relation("LineManager", fields: [lineManagerId], references: [userid], onDelete: NoAction, onUpdate: NoAction)

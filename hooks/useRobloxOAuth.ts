@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 
 export const RobloxOAuthAvailable = () => {
   const [isAvailable, setIsAvailable] = useState(false);
-  const [oauthOnly, setOauthOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -11,11 +10,9 @@ export const RobloxOAuthAvailable = () => {
         const response = await fetch("/api/auth/roblox/config-check");
         const data = await response.json();
         setIsAvailable(data.available || false);
-        setOauthOnly(data.oauthOnly || false);
       } catch (error) {
         console.error("Failed to check OAuth config:", error);
         setIsAvailable(false);
-        setOauthOnly(false);
       } finally {
         setLoading(false);
       }
@@ -24,5 +21,5 @@ export const RobloxOAuthAvailable = () => {
     checkOAuthConfig();
   }, []);
 
-  return { isAvailable, oauthOnly, loading };
+  return { isAvailable, loading };
 };

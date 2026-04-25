@@ -23,7 +23,6 @@ import {
   IconChevronRight,
   IconSettings,
   IconPlus,
-  IconRefresh,
   IconArrowRight,
   IconGift,
   IconAlertTriangle,
@@ -32,6 +31,7 @@ import clsx from "clsx"
 import { withPermissionCheckSsr } from "@/utils/permissionsManager"
 import { GetServerSideProps } from "next"
 import RandomMusic from "@/components/home/randommusic"
+import QuickLinks from "@/components/home/quickLinks"
 
 export const getServerSideProps: GetServerSideProps = withPermissionCheckSsr(
   async ({ query }) => {
@@ -56,9 +56,9 @@ const Home: pageWithLayout = () => {
   const router = useRouter()
   const text = useMemo(() => randomText(login.displayname), [login.displayname])
   const [isLoadingTitle, setIsLoadingTitle] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
   const [titleVisible, setTitleVisible] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [banner, setBanner] = useState<string | null>(null)
 
   const widgets: Record<string, WidgetConfig> = {
     wall: {
@@ -121,24 +121,52 @@ const Home: pageWithLayout = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timezone: detectedTimezone }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [workspace?.groupId, login?.userId])
 
-  const handleRefresh = () => {
-    setRefreshing(true)
-    setTimeout(() => {
-      setRefreshing(false)
-    }, 1000)
-  }
+  useEffect(() => {
+    if (!workspace?.groupId) return;
+    fetch(`/api/workspace/${workspace.groupId}/settings/general/banner`)
+      .then((r) => r.json())
+      .then((data) => { if (data.banner) setBanner(data.banner) })
+      .catch(() => { });
+  }, [workspace?.groupId])
 
   return (
     <div className="pagePadding">
       <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        {banner ? (
+          <div className="relative w-full h-44 md:h-56 rounded-2xl overflow-hidden mb-8 border border-zinc-200 dark:border-zinc-700">
+            <img
+              src={banner}
+              alt="Workspace banner"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-zinc-950/10 to-transparent" />
+            <div className="absolute inset-0 flex items-end px-6 pb-5">
+              <div
+                className={clsx(
+                  "transition-all duration-500",
+                  titleVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+                )}
+              >
+                <span className="text-xs font-medium text-primary uppercase tracking-wider mb-1 block">
+                  Welcome back
+                </span>
+                <h1 className="text-2xl font-semibold tracking-tight text-white mb-0.5">
+                  {text}
+                </h1>
+                <p className="text-sm text-white/60">
+                  Here's what's happening in your workspace
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div
             className={clsx(
-              "transition-all duration-500",
+              "mb-8 transition-all duration-500",
               titleVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
             )}
           >
@@ -152,16 +180,7 @@ const Home: pageWithLayout = () => {
               Here's what's happening in your workspace
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-              aria-label="Refresh dashboard"
-            >
-              <IconRefresh className={clsx("w-5 h-5", refreshing && "animate-spin")} />
-            </button>
-          </div>
-        </div>
+        )}
         {Array.isArray(workspace.settings.widgets) && workspace.settings.widgets.includes("new_members") && (
           <div className="mb-8 z-0 relative">
             <NewToTeam />
@@ -175,9 +194,14 @@ const Home: pageWithLayout = () => {
         <div className="mb-8 z-0 relative">
           <StickyNoteAnnouncement />
         </div>
-		{Array.isArray(workspace.settings.widgets) && workspace.settings.widgets.includes("music_quote") && (
+        {Array.isArray(workspace.settings.widgets) && workspace.settings.widgets.includes("music_quote") && (
           <div className="mb-8 z-0 relative">
             <RandomMusic />
+          </div>
+        )}
+        {Array.isArray(workspace.settings.widgets) && workspace.settings.widgets.includes("quick_links") && (
+          <div className="mb-8 z-0 relative">
+            <QuickLinks />
           </div>
         )}
         {loading ? (

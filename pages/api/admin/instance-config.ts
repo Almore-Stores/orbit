@@ -28,9 +28,13 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 		const envWorkspaceID = process.env.ROBLOX_WORKSPACE_REDIRECTID;
 		const envDiscordAppID = process.env.DISCORD_APPLICATION_ID;
 		const envDCClientSecret = process.env.DISCORD_SECRET;
-		const usingEnvVars = !!((envClientId && envClientSecret) || envRedirectUri || envWorkspaceID || (envDiscordAppID && envDCClientSecret));
+    const envGoogleClientID = process.env.GOOGLE_APP_ID;
+    const envGoogleClientSecret = process.env.GOOGLE_SECRET;
+    const envGoogleEmailFiltration = process.env.GOOGLE_EMAIL_FILTRATION;
+		const usingEnvVars = !!((envClientId && envClientSecret) || envRedirectUri || envWorkspaceID || (envDiscordAppID && envDCClientSecret) || (envGoogleClientID && envGoogleClientSecret) || envGoogleEmailFiltration);
 
 		if (usingEnvVars) {
+			const bgConfig = await prisma.instanceConfig.findUnique({ where: { key: 'loginBackground' } });
 			return res.json({
 				robloxClientId: '••••••••',
 				robloxClientSecret: '••••••••',
@@ -40,6 +44,10 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 				oauthOnlyLogin: envOAuthOnly,
 				redirectWorkspace: envWorkspaceRedirect,
 				redirectWID: envWorkspaceID,
+        google_id: envGoogleClientID ? '••••••••' : '',
+        google_secret: envGoogleClientID ? '••••••••' : '',
+        google_email_filtration: envGoogleEmailFiltration || null,
+				loginBackground: typeof bgConfig?.value === 'string' ? bgConfig.value : null,
 				usingEnvVars: true
 			});
 		}
@@ -47,7 +55,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 		const configs = await prisma.instanceConfig.findMany({
 			where: {
 				key: {
-					in: ['robloxClientId', 'robloxClientSecret', 'robloxRedirectUri', 'oauthOnlyLogin', 'redirectWorkspace', 'discordAppID', 'discordAppSecret']
+					in: ['robloxClientId', 'robloxClientSecret', 'robloxRedirectUri', 'oauthOnlyLogin', 'redirectWorkspace', 'discordAppID', 'discordAppSecret', 'loginBackground', 'google_id', 'google_secret', 'google_email_filtration']
 				}
 			}
 		});
@@ -65,7 +73,11 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 			discordApplicationID: configMap.discordAppID,
 			discordClientSecret: configMap.discordAppSecret,
 			usingEnvVars: false,
-			redirectWorkspace: configMap.redirectWorkspace || ''
+			redirectWorkspace: configMap.redirectWorkspace || '',
+      google_id: configMap.google_id || '',
+      google_secret: configMap.google_secret || '',
+      google_email_filtration: configMap.google_email_filtration,
+			loginBackground: typeof configMap.loginBackground === 'string' ? configMap.loginBackground : null
 		});
 		} catch (error) {
 		console.error('Failed to fetch instance config:', error);
@@ -80,7 +92,10 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 		const envWorkspaceID = process.env.ROBLOX_WORKSPACE_REDIRECTID;
 		const envDiscordAppID = process.env.DISCORD_APPLICATION_ID;
 		const envDCClientSecret = process.env.DISCORD_SECRET;
-		const usingEnvVars = !!((envClientId && envClientSecret) || envRedirectUri || envWorkspaceID || (envDiscordAppID && envDCClientSecret));
+    const envGoogleClientID = process.env.GOOGLE_APP_ID;
+    const envGoogleClientSecret = process.env.GOOGLE_SECRET;
+    const envGoogleEmailFiltration = process.env.GOOGLE_EMAIL_FILTRATION;
+		const usingEnvVars = !!((envClientId && envClientSecret) || envRedirectUri || envWorkspaceID || (envDiscordAppID && envDCClientSecret) || (envGoogleClientID && envGoogleClientSecret) || envGoogleEmailFiltration);
 
 		if (usingEnvVars) {
 			return res.status(403).json({ 
@@ -89,7 +104,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 			});
 		}
 
-		const { robloxClientId, robloxClientSecret, robloxRedirectUri, oauthOnlyLogin, redirectWorkspaceID, discordAppId, discordSecret } = req.body;
+		const { robloxClientId, robloxClientSecret, robloxRedirectUri, oauthOnlyLogin, redirectWorkspaceID, discordAppId, discordSecret, google_id, google_secret, google_email_filtration } = req.body;
 
 		try {
 			const updates = [
@@ -98,7 +113,10 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 				{ key: 'robloxRedirectUri', value: typeof robloxRedirectUri === 'string' ? robloxRedirectUri.trim() : (robloxRedirectUri || '') },
 				{ key: 'discordAppID', value: typeof discordAppId === 'string' ? discordAppId.trim() : (discordAppId || '') },
 				{ key: 'discordAppSecret', value: typeof discordSecret === 'string' ? discordSecret.trim() : (discordSecret || '') },
-				{ key: 'oauthOnlyLogin', value: oauthOnlyLogin || false }
+				{ key: 'oauthOnlyLogin', value: oauthOnlyLogin || false },
+        { key: 'google_id', value: typeof google_id === 'string' ? google_id.trim() : (google_id || '') },
+        { key: 'google_secret', value: typeof google_secret === 'string' ? google_secret.trim() : (google_id || '') },
+        { key: 'google_email_filtration', value: typeof google_email_filtration === 'string' ? google_email_filtration.trim() : (google_email_filtration || '') },
 			];
 
 			if (redirectWorkspaceID) {
