@@ -328,6 +328,7 @@ model ActivitySession {
   idleTime         BigInt?
   workspaceGroupId Int
   messages         Int?
+  chatLog          Json?
   universeId       BigInt?
   sessionMessage   String?
   archived         Boolean?  @default(false)
@@ -541,6 +542,7 @@ model workspaceExternalServices {
   rankingProvider  String?
   rankingToken     String?
   rankingWorkspaceId String?
+  rankingMaxRank   Int?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])

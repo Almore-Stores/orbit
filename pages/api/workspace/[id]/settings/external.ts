@@ -1,9 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import prisma from "@/utils/database";
 import { withPermissionCheck } from "@/utils/permissionsManager";
-import { getConfig } from "@/utils/configEngine";
 
 export default withPermissionCheck(handler, "admin");
+
+function parseRankMax(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : parseInt(String(v), 10);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(255, Math.floor(n));
+}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: workspaceId } = req.query;
@@ -12,18 +18,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ message: "Invalid workspace ID" });
   }
 
+  const wid = parseInt(workspaceId, 10);
+
   if (req.method === "GET") {
     try {
       const settings = await prisma.workspaceExternalServices.findFirst({
         where: {
-          workspaceGroupId: parseInt(workspaceId),
+          workspaceGroupId: wid,
         },
       });
 
       return res.status(200).json({
         rankingProvider: settings?.rankingProvider || "",
-        rankingToken: settings?.rankingToken || "",
         rankingWorkspaceId: settings?.rankingWorkspaceId || "",
+        hasRankingToken: !!(settings?.rankingToken && settings.rankingToken.length > 0),
+        rankingMaxRank:
+          typeof settings?.rankingMaxRank === "number" ? settings.rankingMaxRank : null,
       });
     } catch (error) {
       console.error("Error fetching external services settings:", error);
@@ -32,48 +42,83 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "POST") {
-    const { rankingProvider, rankingToken, rankingWorkspaceId } = req.body;
+    const body = req.body as {
+      rankingProvider?: string;
+      rankingToken?: string;
+      rankingWorkspaceId?: string;
+      rankingMaxRank?: number | string | null;
+      clearRankingToken?: boolean;
+    };
 
-    if (typeof rankingProvider !== "string") {
+    if (typeof body.rankingProvider !== "string") {
       return res.status(400).json({ message: "Invalid ranking provider" });
     }
+
+    const rankingProvider = body.rankingProvider;
+    const rankingMaxRank = parseRankMax(body.rankingMaxRank);
+    const clearRankingToken = body.clearRankingToken === true;
+    const tokenTrim =
+      typeof body.rankingToken === "string" ? body.rankingToken.trim() : "";
+    const wsTrim =
+      typeof body.rankingWorkspaceId === "string"
+        ? body.rankingWorkspaceId.trim()
+        : "";
+
+    const existing = await prisma.workspaceExternalServices.findFirst({
+      where: { workspaceGroupId: wid },
+    });
+
     if (rankingProvider === "rankgun") {
-      if (!rankingToken || !rankingWorkspaceId) {
+      const effectiveToken = tokenTrim || existing?.rankingToken || "";
+      const effectiveWs = wsTrim || existing?.rankingWorkspaceId || "";
+      if (!effectiveToken || !effectiveWs) {
         return res
           .status(400)
           .json({ message: "RankGun requires both API key and workspace ID" });
       }
     }
 
-    if (rankingProvider == "opencloudranking") {
-      const keyConfig = await getConfig("roblox_opencloud", Number(workspaceId))
-      if (!keyConfig) {
+    if (rankingProvider === "opencloudranking") {
+      const effectiveToken = tokenTrim || existing?.rankingToken || "";
+      if (!effectiveToken) {
         return res.status(400).json({
-          message: "This workspace does not possess any API keys."
-        })
-      } else if (!keyConfig.enabled) {
-        return res.status(400).json({
-          message: "Opencloud keys are not active."
-        })
+          message:
+            "Integrated Ranking requires its own API key (separate from Roblox API settings).",
+        });
       }
     }
 
     try {
+      const updatePayload: {
+        rankingProvider: string | null;
+        rankingWorkspaceId: string | null;
+        rankingMaxRank: number | null;
+        updatedAt: Date;
+        rankingToken?: string | null;
+      } = {
+        rankingProvider: rankingProvider || null,
+        rankingWorkspaceId: wsTrim || null,
+        rankingMaxRank,
+        updatedAt: new Date(),
+      };
+
+      if (clearRankingToken) {
+        updatePayload.rankingToken = null;
+      } else if (tokenTrim !== "") {
+        updatePayload.rankingToken = tokenTrim;
+      }
+
       await prisma.workspaceExternalServices.upsert({
         where: {
-          workspaceGroupId: parseInt(workspaceId),
+          workspaceGroupId: wid,
         },
-        update: {
-          rankingProvider: rankingProvider || null,
-          rankingToken: rankingToken || null,
-          rankingWorkspaceId: rankingWorkspaceId || null,
-          updatedAt: new Date(),
-        },
+        update: updatePayload,
         create: {
-          workspaceGroupId: parseInt(workspaceId),
+          workspaceGroupId: wid,
           rankingProvider: rankingProvider || null,
-          rankingToken: rankingToken || null,
-          rankingWorkspaceId: rankingWorkspaceId || null,
+          rankingToken: tokenTrim || null,
+          rankingWorkspaceId: wsTrim || null,
+          rankingMaxRank,
         },
       });
 
