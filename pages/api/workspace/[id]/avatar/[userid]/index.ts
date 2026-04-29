@@ -27,7 +27,7 @@ function touch(key: string, entry: CacheEntry) {
 }
 
 const CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=600';
-const STALE_AFTER_MS = 6 * 60 * 60 * 1000; // 6h revalidation threshold
+const STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 
 const ROBLOX_RESOLUTIONS = [48, 50, 60, 75, 100, 110, 150, 180, 352, 420, 720];
 
@@ -45,6 +45,50 @@ const BG_COLORS: Record<string, string> = {
   orbit: '#ff0099'
 };
 
+const FALLBACK_HEADSHOT_USER_IDS = [156, 1, 8146];
+
+function isPngBuffer(buf: Buffer | null): boolean {
+  if (!buf || buf.length < 24) return false;
+  return (
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47 &&
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
+  );
+}
+
+async function fetchFallbackRobloxAvatarBuffer(targetResolution: number): Promise<Buffer> {
+  const size = Math.min(Math.max(targetResolution, 48), 720);
+  for (const fid of FALLBACK_HEADSHOT_USER_IDS) {
+    try {
+      const url = `https://www.roblox.com/headshot-thumbnail/image?userId=${fid}&width=${size}&height=${size}&format=png`;
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        timeout: 12000,
+        validateStatus: (status) => status === 200
+      });
+      const buf = Buffer.from(response.data);
+      if (isPngBuffer(buf) && buf.length > 200) return buf;
+    } catch {
+      continue;
+    }
+  }
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 3,
+      background: { r: 160, g: 160, b: 170 }
+    }
+  })
+    .png()
+    .toBuffer();
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { userid, color, res: resParam } = req.query;
 
@@ -54,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!Number.isInteger(userIdNum) || userIdNum <= 0) return res.status(400).end('Invalid userId');
   if (userIdNum > 10_000_000_000) return res.status(400).end('Invalid userId');
 
-  let resolution = 180; // Default resolution
+  let resolution = 180;
   if (resParam && !Array.isArray(resParam)) {
     const parsed = parseInt(resParam, 10);
     if (Number.isInteger(parsed) && parsed >= 48 && parsed <= 2048) {
@@ -126,6 +170,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       baseBuffer = await fs.readFile(avatarPath);
       diskStat = await fs.stat(avatarPath);
+      if (baseBuffer && !isPngBuffer(baseBuffer)) {
+        baseBuffer = null;
+        diskStat = null;
+      }
     } catch { }
 
     if (fetchFromRoblox || !baseBuffer || (diskStat && Date.now() - diskStat.mtimeMs > STALE_AFTER_MS)) {
@@ -161,7 +209,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (e) {
     console.error('Avatar error serving', userIdNum, e);
-    res.status(404).end('Not found');
+    try {
+      const raw = await fetchFallbackRobloxAvatarBuffer(sourceResolution);
+      const processedBuffer =
+        resolution !== sourceResolution || bgColor
+          ? await processImage(raw, bgColor, resolution, sourceResolution)
+          : raw;
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+      res.setHeader('Content-Length', processedBuffer.length.toString());
+      res.end(processedBuffer);
+    } catch (e2) {
+      console.error('Avatar fallback failed', userIdNum, e2);
+      res.status(404).end('Not found');
+    }
   }
 }
 
@@ -173,7 +234,6 @@ async function processImage(
 ): Promise<Buffer> {
   let pipeline = sharp(buffer);
 
-  // Resize if target is different from source
   if (targetResolution !== sourceResolution) {
     pipeline = pipeline.resize(targetResolution, targetResolution, {
       fit: 'contain',
@@ -182,7 +242,7 @@ async function processImage(
   }
 
   if (bgColor) {
-    const hexColor = BG_COLORS[bgColor] ?? bgColor; // use preset or raw hex
+    const hexColor = BG_COLORS[bgColor] ?? bgColor;
     const rgb = hexToRgb(hexColor);
 
     pipeline = pipeline.flatten({
@@ -231,18 +291,28 @@ function isNotModified(req: NextApiRequest, entry: CacheEntry): boolean {
 }
 
 async function fetchAndPersist(userId: number, filePath: string, resolution: number = 180): Promise<Buffer> {
-  const remoteUrl = await getRemoteAvatarUrl(userId, resolution);
-  const response = await axios.get(remoteUrl, {
-    responseType: 'arraybuffer',
-    timeout: 12000
-  });
-  const buf = Buffer.from(response.data);
+  try {
+    const remoteUrl = await getRemoteAvatarUrl(userId, resolution);
+    const response = await axios.get(remoteUrl, {
+      responseType: 'arraybuffer',
+      timeout: 12000,
+      validateStatus: (status) => status === 200
+    });
+    const buf = Buffer.from(response.data);
 
-  if (ROBLOX_RESOLUTIONS.includes(resolution)) {
-    fs.writeFile(filePath, buf).catch(() => { });
+    if (!isPngBuffer(buf) || buf.length < 100) {
+      throw new Error('Invalid or empty avatar PNG');
+    }
+
+    if (ROBLOX_RESOLUTIONS.includes(resolution)) {
+      fs.writeFile(filePath, buf).catch(() => { });
+    }
+
+    return buf;
+  } catch (e) {
+    console.warn('Avatar remote fetch failed', userId, resolution, e);
+    return fetchFallbackRobloxAvatarBuffer(resolution);
   }
-
-  return buf;
 }
 
 async function triggerBackgroundRefresh(
@@ -253,7 +323,6 @@ async function triggerBackgroundRefresh(
   targetResolution: number = 180
 ) {
   try {
-    // Determine source resolution for refresh
     let sourceResolution: number;
     if (ROBLOX_RESOLUTIONS.includes(targetResolution)) {
       sourceResolution = targetResolution;
