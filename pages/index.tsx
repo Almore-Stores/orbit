@@ -299,20 +299,6 @@ const Home: NextPage = () => {
     }
   }, [])
 
-  useEffect(() => {
-    if (isOwner) return
-
-		if ( login.workspaces?.length) {
-			const hasAccess = login.workspaces.some(workspace => workspace.groupId === 16109128)
-
-			if (hasAccess) {
-				gotoWorkspace(16109128)
-			} else {
-				router.push('/404')
-			}
-		}
-	}, [login.workspaces, externalConfig.redirect_wid, showInstanceSettings, configLoading])
-
   const nextSlide = () => {
     setOnboardingSlide(onboardingSlide + 1)
   }
