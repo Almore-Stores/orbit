@@ -1,8 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { withSessionRoute } from "@/lib/withSession";
-import prisma from "@/utils/database";
 import axios from "axios";
-import { getConfig } from "@/utils/configEngine";
 
 interface OpenCloudKeyRes {
   name: string;
@@ -20,48 +18,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
-  const workspaceId = parseInt(req.query.id as string);
-  const userId = req.session.userid;
-
-  if (!userId || isNaN(workspaceId)) {
-    return res.status(400).json({ success: false, error: "Invalid request" });
-  }
-
-  const user = await prisma.user.findFirst({
-    where: { userid: userId },
-    include: {
-      roles: { where: { workspaceGroupId: workspaceId } },
-      workspaceMemberships: { where: { workspaceGroupId: workspaceId } },
-    },
-  });
-
-  const membership = user?.workspaceMemberships?.[0];
-  const isAdmin = membership?.isAdmin || false;
-  const userRole = user?.roles?.[0];
-  const hasAdminPermission = userRole?.permissions?.includes("admin") || isAdmin;
-
-  if (!hasAdminPermission) {
-    return res.status(403).json({ success: false, error: "Forbidden" });
-  }
-
-  const body = req.body as { key?: string };
-  let keyToTest: string;
-  if (typeof body.key === "string" && body.key.trim() !== "") {
-    keyToTest = body.key.trim();
-  } else {
-    const stored = (await getConfig("roblox_opencloud", workspaceId)) as
-      | { key?: string }
-      | undefined;
-    keyToTest = typeof stored?.key === "string" ? stored.key.trim() : "";
-  }
-  if (!keyToTest) {
+  const { key } = req.body as { key?: string };
+  if (!key || !key.trim()) {
     return res.status(400).json({ success: false, error: "OpenCloud key is required" });
   }
 
   try {
     const ocres = await axios.post<OpenCloudKeyRes>(
       "https://apis.roblox.com/api-keys/v1/introspect",
-      { apiKey: keyToTest },
+      { apiKey: key.trim() },
       { headers: { "Content-Type": "application/json" } }
     );
 
@@ -90,7 +55,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       return res.status(400).json({ success: false, code: 5, error: "Invalid API key" });
     }
-    console.error("Error testing Open Cloud Key:", error);
+    console.error("Error testing Open Cloud key:", error);
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Internal server error",

@@ -165,6 +165,36 @@ export function HelpFloatingButton() {
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">v{packageJson.version}</p>
         </div>
         <div className="h-px bg-zinc-200/80 dark:bg-zinc-600/80 mx-3 mb-2" />
+<<<<<<< HEAD
+=======
+        <a
+          href="https://docs.planetaryapp.us"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/70 transition-colors"
+        >
+          <IconBook className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" stroke={1.5} />
+          <span>Documentation</span>
+        </a>
+        <a
+          href="https://github.com/planetaryorbit/orbit"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/70 transition-colors"
+        >
+          <IconBrandGithub className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" stroke={1.5} />
+          <span>GitHub</span>
+        </a>
+        <a
+          href="https://feedback.planetaryapp.us/feature-requests"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/70 transition-colors"
+        >
+          <IconBug className="w-4 h-4 text-zinc-400 dark:text-zinc-500 flex-shrink-0" stroke={1.5} />
+          <span>Bug Reports</span>
+        </a>
+>>>>>>> 3242ec2caeb196accf2eeae08cc5719d8c51f794
         <Menu.Item>
           {({ active }) => (
             <button

@@ -22,7 +22,6 @@ import {
 } from "chart.js";
 import { themeState } from "@/state/theme";
 import AuthProvider from "./AuthProvider";
-import axios from "axios";
 import { loginState } from "@/state";
 import { getRGBFromTailwindColor, DEFAULT_THEME_RGB } from "@/utils/themeColor";
 import LoadingScreen from "@/components/loading";
@@ -115,7 +114,7 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
 
       {showLoader && <LoadingScreen done={!loading} />}
 
-      {!loading && (
+      {!showLoader && (
         <Layout>
           <div className="pb-8 sm:pb-0">
             <Component {...pageProps} />

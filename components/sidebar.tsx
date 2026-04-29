@@ -102,7 +102,7 @@ function MobileWorkspaceSwitcher({
         <>
           <div
             className={clsx(
-              "fixed inset-0 z-[99995] bg-black/40 backdrop-blur-sm rounded-3xl",
+              "fixed inset-0 z-[99995] bg-black/40 rounded-3xl",
               "transition-opacity duration-[280ms] ease-out",
               visible ? "opacity-100" : "opacity-0"
             )}
@@ -168,7 +168,7 @@ function MobileWorkspaceSwitcher({
                       className="w-full flex items-center gap-3 p-3 rounded-2xl text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/60 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors duration-150 outline-none select-none"
                     >
                       <img
-                        src={ws.groupThumbnail || "/placeholder.svg"}
+                        src={ws.groupThumbnail || "/favicon.svg"}
                         alt=""
                         className="w-9 h-9 rounded-xl object-cover bg-zinc-100 dark:bg-zinc-800 shrink-0"
                       />
@@ -211,29 +211,47 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
   const [isStandalone, setIsStandalone] = useState(false);
   const [safeAreaBottom, setSafeAreaBottom] = useState(0);
   const workspaceListboxWrapperRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Detect standalone (PWA) mode
-      if (window.matchMedia("(display-mode: standalone)").matches) {
-        setIsStandalone(true);
-      }
+    if (typeof window === "undefined") return;
 
-      // Read the actual safe-area-inset-bottom value via CSS
-      const readSafeArea = () => {
-        const el = document.createElement("div");
-        el.style.cssText =
-          "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden;";
-        document.body.appendChild(el);
-        const h = el.getBoundingClientRect().height;
-        document.body.removeChild(el);
-        setSafeAreaBottom(h);
-      };
-      readSafeArea();
-      window.addEventListener("resize", readSafeArea);
-      return () => window.removeEventListener("resize", readSafeArea);
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setIsStandalone(true);
     }
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+
+    const applyVisualViewport = () => {
+      if (!vv || !navRef.current) return;
+      const offsetY = window.innerHeight - vv.height - vv.offsetTop;
+      navRef.current.style.transform = `translateY(${offsetY}px) translateZ(0)`;
+    };
+
+    if (vv) {
+      vv.addEventListener("resize", applyVisualViewport);
+      vv.addEventListener("scroll", applyVisualViewport);
+      applyVisualViewport();
+    }
+
+    const readSafeArea = () => {
+      const el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden;";
+      document.body.appendChild(el);
+      setSafeAreaBottom(el.getBoundingClientRect().height);
+      document.body.removeChild(el);
+    };
+    readSafeArea();
+    window.addEventListener("resize", readSafeArea);
+
+    return () => {
+      window.removeEventListener("resize", readSafeArea);
+      if (vv) {
+        vv.removeEventListener("resize", applyVisualViewport);
+        vv.removeEventListener("scroll", applyVisualViewport);
+      }
+    };
   }, []);
 
   const openMoreSheet = () => {
@@ -336,12 +354,8 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
     }
   }, [workspace.groupId, noticesEnabled, workspace.yourPermission]);
 
-  // Height of the bottom nav bar content (icon + label area), excluding safe area
-  const NAV_CONTENT_HEIGHT = 64; // h-16 = 64px
-
   return (
     <>
-      {/* ── Desktop sidebar ── */}
       <div
         className={clsx(
           "hidden fixed lg:static top-0 left-0 h-screen z-[99999] flex-col transition-[transform,width] duration-300 ease-out",
@@ -603,17 +617,8 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
           </div>
         </aside>
       </div>
-
-      {/* ── Mobile bottom nav ──
-          Key fixes:
-          1. Use inline style for paddingBottom with env(safe-area-inset-bottom) so iOS
-             actually respects the home indicator area.
-          2. Add WebkitTransform + transform: translateZ(0) so iOS renders this on its
-             own GPU layer — prevents it from disappearing when the keyboard/search bar appears.
-          3. The inner content row is always h-16 (fixed); the safe-area padding is ONLY
-             on the outer nav element, so Chrome's dynamic toolbar never clips the buttons.
-      -->*/}
       <nav
+        ref={navRef}
         className={clsx(
           "fixed bottom-0 inset-x-0 z-[99990]",
           "bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl",
@@ -621,16 +626,12 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
           isStandalone ? "flex flex-col" : "lg:hidden flex flex-col"
         )}
         style={{
-          // Force GPU compositing — prevents iOS from dropping this layer when
-          // the browser chrome (URL bar / search bar) animates in or out.
           WebkitTransform: "translateZ(0)",
           transform: "translateZ(0)",
-          // Safe area inset handled here, NOT as a Tailwind class, so it reliably
-          // picks up the actual device value on both iOS Safari and Chrome Android.
+          willChange: "transform",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {/* Fixed-height content row — always 64px, never squished by safe-area */}
         <div className="flex items-stretch h-16 w-full">
           {bottomBarPages.map((page) => {
             const isActive = router.asPath === page.href.replace("[id]", workspace.groupId.toString());
@@ -689,9 +690,6 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
           )}
         </div>
       </nav>
-
-      {/* Spacer so page content isn't hidden under the fixed bottom nav.
-          Height = 64px content + actual safe area bottom inset. */}
       <div
         className={clsx(isStandalone ? "block" : "lg:hidden block")}
         style={{
@@ -700,13 +698,11 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
         }}
         aria-hidden
       />
-
-      {/* ── "More" bottom sheet ── */}
       {mobileMoreOpen && (
         <>
           <div
             className={clsx(
-              "fixed inset-0 z-[99991] bg-black/30 backdrop-blur-sm",
+              "fixed inset-0 z-[99995] bg-black/30 backdrop-blur-sm",
               "transition-opacity duration-300 ease-out",
               mobileMoreVisible ? "opacity-100" : "opacity-0"
             )}
@@ -716,7 +712,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
 
           <div
             className={clsx(
-              "fixed bottom-0 inset-x-0 z-[99992]",
+              "fixed bottom-0 inset-x-0 z-[99999]",
               "bg-white dark:bg-zinc-900 rounded-t-3xl shadow-2xl",
               "transition-transform duration-300 ease-out",
               mobileMoreVisible ? "translate-y-0" : "translate-y-full"
@@ -822,7 +818,6 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
               </button>
             </div>
 
-            {/* Extra bottom padding so content clears the safe area */}
             <div className="h-6" />
           </div>
         </>
