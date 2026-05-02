@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
-import { IconUserPlus, IconMusic, IconPencil, IconX, IconCheck, IconPlayerPlay, IconPlayerPause, IconSearch, IconLoader2 } from '@tabler/icons-react';
+import { IconUserPlus, IconMusic, IconPencil, IconX, IconCheck, IconPlayerPlay, IconPlayerPause, IconSearch, IconLoader2, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useRecoilState } from 'recoil';
 import { loginState } from '@/state';
+import clsx from 'clsx';
 
 interface NewMember {
   userid: string;
@@ -44,20 +45,13 @@ function proxyUrl(previewUrl: string): string {
   return `/api/music/preview?url=${encodeURIComponent(previewUrl)}`;
 }
 
-const BG_COLORS = [
-  "bg-rose-300", "bg-lime-300", "bg-teal-200", "bg-amber-300",
-  "bg-rose-200", "bg-lime-200", "bg-green-100", "bg-red-100",
-  "bg-yellow-200", "bg-amber-200", "bg-emerald-300", "bg-green-300",
-  "bg-red-300", "bg-emerald-200", "bg-green-200", "bg-red-200",
-];
+function slotWidthPx(): number {
+  return 72 + 16;
+}
 
-function getRandomBg(userid: string, username?: string) {
-  const key = `${userid ?? ""}:${username ?? ""}`;
-  let hash = 5381;
-  for (let i = 0; i < key.length; i++) {
-    hash = ((hash << 5) - hash) ^ key.charCodeAt(i);
-  }
-  return BG_COLORS[(hash >>> 0) % BG_COLORS.length];
+function truncateUsername(username: string, maxLen = 13): string {
+  if (username.length <= maxLen) return username;
+  return `${username.slice(0, maxLen)}…`;
 }
 
 export default function NewToTeam() {
@@ -67,7 +61,8 @@ export default function NewToTeam() {
   const [members, setMembers] = useState<NewMember[]>([]);
   const [loading, setLoading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [maxVisible, setMaxVisible] = useState(10);
+  const [page, setPage] = useState(0);
+  const [perPage, setPerPage] = useState(6);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -95,13 +90,32 @@ export default function NewToTeam() {
   useEffect(() => {
     const calc = () => {
       if (!cardRef.current) return;
-      const available = cardRef.current.offsetWidth - 32;
-      setMaxVisible(Math.max(1, Math.floor(available / 104)));
+      const w = cardRef.current.offsetWidth;
+      const reservePadding = 28;
+      const slot = slotWidthPx();
+      const baseInner = Math.max(0, w - reservePadding);
+      let n = Math.max(3, Math.floor(baseInner / slot));
+      const pagesOneRow = Math.ceil(members.length / n);
+      if (pagesOneRow > 1) {
+        const reserveArrows = 96;
+        const inner = Math.max(0, w - reservePadding - reserveArrows);
+        n = Math.max(3, Math.floor(inner / slot));
+      }
+      setPerPage(n);
     };
     calc();
-    window.addEventListener('resize', calc);
-    return () => window.removeEventListener('resize', calc);
-  }, []);
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, [members.length]);
+
+  useEffect(() => {
+    const pages = Math.max(1, Math.ceil(members.length / Math.max(perPage, 1)));
+    setPage((p) => Math.min(p, pages - 1));
+  }, [perPage, members.length]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [workspaceId]);
 
   const stopMainAudio = () => {
     if (audioRef.current) {
@@ -228,22 +242,28 @@ export default function NewToTeam() {
   if (loading) return null;
   if (!members.length) return null;
 
-  const visibleMembers = members.slice(0, maxVisible);
+  const totalPages = Math.max(1, Math.ceil(members.length / perPage));
+  const safePage = Math.min(page, totalPages - 1);
+  const rowMembers = members.slice(safePage * perPage, safePage * perPage + perPage);
+  const showArrows = totalPages > 1;
+
+  const goPrev = () => setPage((p) => Math.max(0, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages - 1, p + 1));
 
   return (
     <>
-      <div ref={cardRef} className="z-0 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl shadow-sm p-4 flex flex-col gap-4 mb-6 relative">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+      <div ref={cardRef} className="z-0 bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl shadow-sm p-4 flex flex-col gap-3 mb-6 relative">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
               <IconUserPlus className="w-5 h-5 text-primary" />
             </div>
-            <span className="text-lg font-medium text-zinc-900 dark:text-white">New to the Team</span>
+            <span className="text-lg font-medium text-zinc-900 dark:text-white truncate">New to the Team</span>
           </div>
           {myMember && (
             <button
               onClick={openEdit}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors shrink-0 self-start sm:self-auto"
             >
               <IconPencil className="w-3 h-3" />
               Edit intro
@@ -251,84 +271,145 @@ export default function NewToTeam() {
           )}
         </div>
 
-        <div className="flex gap-4 flex-wrap pb-2">
-          {visibleMembers.map(m => {
-            const isMe = m.userid === String(login?.userId);
-            const song = parseSong(m.introSong);
-            const isPlaying = playingId === m.userid;
-            return (
-              <div key={m.userid} className="flex flex-col items-center shrink-0 w-20">
-                <div className="relative">
-                  <Link href={`/workspace/${workspaceId}/profile/${m.userid}`}>
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${getRandomBg(m.userid)} ring-2 ring-transparent hover:ring-primary transition overflow-hidden cursor-pointer`}>
-                      <img
-                        src={`/api/workspace/${workspaceId}/avatar/${m.userid}`}
-                        alt={m.username}
-                        className="w-16 h-16 object-cover rounded-full border-2 border-white"
-                        loading="lazy"
-                      />
-                    </div>
-                  </Link>
-                  {isMe && (
-                    <button
-                      onClick={openEdit}
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm hover:bg-primary/90 transition-colors"
-                      title="Edit your intro"
-                    >
-                      <IconPencil className="w-2.5 h-2.5 text-white" />
-                    </button>
-                  )}
-                  {song ? (
-                    <button
-                      type="button"
-                      onClick={() => togglePlay(m)}
-                      className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-zinc-800/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full py-0.5 shadow-sm hover:bg-zinc-700/90 group ${
-                        isPlaying ? 'pl-0.5 pr-1' : 'px-0.5'
-                      }`}
-                      style={{
-                        maxWidth: isPlaying ? 'min(400px, calc(100vw - 2rem))' : 88,
-                        minWidth: isPlaying ? 'auto' : 80,
-                        transition: 'max-width 0.55s cubic-bezier(0.4,0,0.2,1)',
-                      }}
-                      title={isPlaying ? 'Pause' : `${song.title} – ${song.artist}`}
-                    >
-                      <img src={song.artwork} alt="" className="w-4 h-4 rounded-full shrink-0 object-cover" />
-                      {!isPlaying && (
-                        <span className="text-[10px] text-white ml-0.5 min-w-0 max-w-[52px] truncate">
-                          {song.title}
-                        </span>
+        <div
+          className={
+            showArrows
+              ? "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 sm:gap-x-3"
+              : "w-full"
+          }
+        >
+          {showArrows ? (
+            <button
+              type="button"
+              aria-label="Show previous people"
+              disabled={safePage <= 0}
+              onClick={goPrev}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-700 transition-colors hover:bg-zinc-100 disabled:pointer-events-none disabled:opacity-30 dark:border-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-200 dark:hover:bg-zinc-600 sm:h-10 sm:w-10"
+            >
+              <IconChevronLeft className="h-5 w-5" stroke={2} />
+            </button>
+          ) : null}
+
+          <div className="min-w-0 overflow-x-auto py-0.5 scrollbar-hide">
+            <div className="flex w-full min-w-0 justify-between gap-x-2 sm:gap-x-3">
+              {rowMembers.map((m) => {
+                const isMe = m.userid === String(login?.userId);
+                const song = parseSong(m.introSong);
+                const isPlaying = playingId === m.userid;
+                const hasNote = Boolean(m.introNote?.trim());
+                const equalColumns = rowMembers.length > 1;
+                return (
+                  <div
+                    key={m.userid}
+                    className={clsx(
+                      "flex min-w-0 flex-col items-center",
+                      equalColumns ? "flex-1 basis-0" : "w-auto shrink-0",
+                    )}
+                  >
+                    <div className="relative h-16 w-16 shrink-0">
+                      <Link href={`/workspace/${workspaceId}/profile/${m.userid}`}>
+                        <div className="flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-2 ring-transparent transition hover:ring-primary">
+                          <img
+                            src={`/api/workspace/${workspaceId}/avatar/${m.userid}`}
+                            alt={m.username}
+                            className="h-16 w-16 rounded-full border-2 border-white object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      </Link>
+                      {isMe && (
+                        <button
+                          onClick={openEdit}
+                          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow-sm transition-colors hover:bg-primary/90"
+                          title="Edit your intro"
+                        >
+                          <IconPencil className="h-2.5 w-2.5 text-white" />
+                        </button>
                       )}
-                      {isPlaying && (
-                        <span className="text-[10px] text-white px-0.5 whitespace-nowrap min-w-0">
-                          {song.title}
-                        </span>
-                      )}
-                      <span className="shrink-0">
-                        {isPlaying
-                          ? <IconPlayerPause className="w-2.5 h-2.5 text-primary" />
-                          : <IconPlayerPlay className="w-2.5 h-2.5 text-zinc-300 group-hover:text-white" />
-                        }
-                      </span>
-                    </button>
-                  ) : m.introNote ? (
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-zinc-800/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 shadow-sm whitespace-nowrap">
-                      <IconMusic className="w-2.5 h-2.5 text-primary shrink-0" />
-                      <span className="text-[10px] text-white">{m.introNote.slice(0, 15)}</span>
                     </div>
-                  ) : null}
-                </div>
-                <div className="mt-4 text-xs font-medium text-center text-zinc-700 dark:text-zinc-300 truncate w-full" title={m.username}>
-                  {m.username}
-                </div>
-                {m.introNote && song && (
-                  <div className="mt-0.5 text-[10px] text-zinc-400 dark:text-zinc-500 w-full text-center" title={m.introNote}>
-                    {m.introNote.slice(0, 15)}
+
+                    <div
+                      className="mt-2 w-full truncate text-center text-xs font-medium text-zinc-700 dark:text-zinc-300"
+                      title={m.username}
+                    >
+                      {truncateUsername(m.username)}
+                    </div>
+
+                    <div className="mt-1.5 flex h-9 w-full min-w-0 items-center justify-center gap-1.5 px-0.5">
+                      {song ? (
+                        <button
+                          type="button"
+                          onClick={() => togglePlay(m)}
+                          className={clsx(
+                            "group/play relative shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-800",
+                            isPlaying &&
+                              "ring-1 ring-primary/50 ring-offset-2 ring-offset-white dark:ring-offset-zinc-800",
+                          )}
+                          aria-label={isPlaying ? "Pause preview" : `Play preview: ${song.title}`}
+                        >
+                          <span className="relative block h-6 w-6">
+                            <img
+                              src={song.artwork}
+                              alt=""
+                              className="h-6 w-6 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-600"
+                            />
+                            <span className="absolute -bottom-px -right-px flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary shadow-sm">
+                              {isPlaying ? (
+                                <IconPlayerPause className="h-2 w-2 text-white" stroke={2} />
+                              ) : (
+                                <IconPlayerPlay className="h-2 w-2 translate-x-px text-white" stroke={2} />
+                              )}
+                            </span>
+                          </span>
+                          <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-20 mb-1 w-max max-w-[11rem] -translate-x-1/2 rounded-md bg-zinc-900 px-2 py-1 text-left text-[10px] text-white opacity-0 shadow-lg transition-all group-hover/play:visible group-hover/play:opacity-100 dark:bg-zinc-950">
+                            <span className="block truncate font-medium">{song.title}</span>
+                            <span className="block truncate text-zinc-400">{song.artist}</span>
+                          </span>
+                        </button>
+                      ) : null}
+                      {!song && hasNote ? (
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+                          <IconMusic className="h-3 w-3 text-primary" />
+                        </span>
+                      ) : null}
+                      {hasNote ? (
+                        <p
+                          className="min-w-0 max-w-[min(100%,7rem)] truncate text-left text-[10px] leading-tight text-zinc-500 dark:text-zinc-400"
+                          title={m.introNote ?? ""}
+                        >
+                          {m.introNote}
+                        </p>
+                      ) : null}
+                      {song && !hasNote ? (
+                        <span className="sr-only">
+                          {song.title} – {song.artist}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
+
+          {showArrows ? (
+            <button
+              type="button"
+              aria-label="Show next people"
+              disabled={safePage >= totalPages - 1}
+              onClick={goNext}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-700 transition-colors hover:bg-zinc-100 disabled:pointer-events-none disabled:opacity-30 dark:border-zinc-600 dark:bg-zinc-700/80 dark:text-zinc-200 dark:hover:bg-zinc-600 sm:h-10 sm:w-10"
+            >
+              <IconChevronRight className="h-5 w-5" stroke={2} />
+            </button>
+          ) : null}
         </div>
+
+        {showArrows ? (
+          <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500 -mt-1 pb-0.5">
+            {safePage + 1} / {totalPages}
+          </p>
+        ) : null}
       </div>
 
       {editOpen && createPortal(
