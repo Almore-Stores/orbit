@@ -7,10 +7,9 @@ import { getConfig } from "@/utils/configEngine";
 import { useState, Fragment, useMemo, useRef, useEffect } from "react";
 import randomText from "@/utils/randomText";
 import { useRecoilState } from "recoil";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import Button from "@/components/button";
 import { InferGetServerSidePropsType } from "next";
-import { withSessionSsr } from "@/lib/withSession";
 import moment from "moment";
 import { Dialog, Transition } from "@headlessui/react";
 import { withPermissionCheckSsr } from "@/utils/permissionsManager";
@@ -62,7 +61,7 @@ export const getServerSideProps = withPermissionCheckSsr(
         return {
           ...user,
           userid: Number(user.userid),
-          thumbnail: getThumbnail(user.userid, wsId),
+          thumbnail: getThumbnail(user.userid),
         };
       })
     );
@@ -90,7 +89,7 @@ export const getServerSideProps = withPermissionCheckSsr(
           ...rep,
           userid: Number(rep.userid),
           username: await getUsername(rep.userid),
-          thumbnail: getThumbnail(rep.userid, wsId),
+          thumbnail: getThumbnail(rep.userid),
         };
       })
     );
@@ -128,7 +127,7 @@ export const getServerSideProps = withPermissionCheckSsr(
           ...visit,
           hostId: Number(visit.hostId),
           hostUsername: await getUsername(visit.hostId),
-          hostThumbnail: getThumbnail(visit.hostId, wsId),
+          hostThumbnail: getThumbnail(visit.hostId),
           time: new Date(visit.time).toISOString(),
           participants: visit.participants
             ? visit.participants.map((p: bigint) => Number(p))
@@ -677,8 +676,6 @@ const ManageAlly: pageWithLayout<pageProps> = (props) => {
 
   return (
     <>
-      <Toaster position="bottom-center" />
-
       <Transition appear show={isOpen} as={Fragment}>
         <Dialog
           as="div"

@@ -13,7 +13,7 @@ import Input from "@/components/input"
 import { motion } from "framer-motion"
 import { useForm, FormProvider } from "react-hook-form"
 import { useRecoilState } from "recoil"
-import { toast, Toaster } from "react-hot-toast"
+import { toast } from "react-hot-toast"
 import { IconPlus, IconRefresh, IconChevronRight, IconBuildingSkyscraper, IconSettings, IconX, IconPin, IconPinFilled, IconUsersGroup, IconCalendarEvent, IconChartBar, IconFileText, IconRocket, IconServerCog, IconClock, IconUserCog, IconClockCog } from "@tabler/icons-react"
 import clsx from "clsx"
 
@@ -323,7 +323,6 @@ const Home: NextPage = () => {
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(var(--group-theme,236,72,153),0.08),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(var(--group-theme,236,72,153),0.12),transparent)] pointer-events-none" aria-hidden />
         <Topbar />
-        <Toaster position="bottom-center" />
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16 sm:pt-14 sm:pb-20">
           <header className="mb-10 sm:mb-12">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
@@ -968,7 +967,7 @@ const Home: NextPage = () => {
                               <div key={i} className="w-full shrink-0">
                                 <div className="flex items-center justify-center pt-8 pb-4">
                                   <div className="w-16 h-16 rounded-2xl bg-primary/15 dark:bg-primary/20 flex items-center justify-center">
-                                    <Icon className="w-8 h-8 text-primary dark:text-white" stroke={1.5} />
+                                    <Icon className="w-8 h-8 text-primary" stroke={1.5} />
                                   </div>
                                 </div>
 

@@ -1,10 +1,10 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 ARG NODE_OPTIONS="--max-old-space-size=4096"
 ENV NODE_OPTIONS="${NODE_OPTIONS}"
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm (version pinned by packageManager in package.json)
+RUN corepack enable
 
 # Create app directory
 WORKDIR /usr/src/app

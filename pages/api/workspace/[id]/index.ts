@@ -7,6 +7,7 @@ import {
 	ALLIANCE_STRIKES_DEFAULT_MAX,
 	normalizeAllianceMaxStrikes,
 } from '@/utils/allianceStrikesConfig'
+import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
 
 type RoleOut = Omit<role, 'groupRoles'> & { groupRoles: string[] };
 
@@ -24,6 +25,8 @@ type Data = {
 		yourPermission: string[]
 		groupTheme: string,
 		groupDarkTheme: string,
+    lastSynced: Date | null,
+    lastSyncedSuccessful: boolean | null,
 		settings: {
 			guidesEnabled: boolean
 			leaderboardEnabled: boolean
@@ -38,14 +41,14 @@ type Data = {
 	}
 }
 
-export default withPermissionCheck(handler);
+export default withAuth(handler);
 
 export async function handler(
-	req: NextApiRequest,
+	req: AuthenticatedRequest,
 	res: NextApiResponse<Data>
 ) {
 	if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })
-	if (!req.session.userid) return res.status(401).json({ success: false, error: 'Not authenticated' });
+	if (!req.auth.userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
 	if (!req.query.id) return res.status(400).json({ success: false, error: 'Missing required fields' });
 
 	const workspace = await prisma.workspace.findUnique({
@@ -60,7 +63,7 @@ export async function handler(
 
 	const user = await prisma.user.findFirst({
 		where: {
-			userid: BigInt(req.session.userid)
+			userid: BigInt(req.auth.userId)
 		},
 		include: {
 			roles: {
@@ -151,6 +154,7 @@ export async function handler(
 		"Activity adjustments": "activity_adjustments",
 		"View logbook": "view_logbook",
 		"Logbook redact": "logbook_redact",
+		"Logbook delete": "logbook_delete",
 		"Logbook note": "logbook_note",
 		"Logbook warning": "logbook_warning",
 		"Logbook promotion": "logbook_promotion",
@@ -191,6 +195,8 @@ export async function handler(
 			groupRoles: r.groupRoles.map((id) => id.toString()),
 		})),
 		yourRole: user.roles[0].id,
+    lastSynced: workspace.lastSynced,
+    lastSyncedSuccessful: workspace.lastSyncedSuccessful,
 		settings: {
 			guidesEnabled: guidesConfig?.enabled || false,
 			leaderboardEnabled: leaderboardConfig?.enabled || false,

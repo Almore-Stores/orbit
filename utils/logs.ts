@@ -69,6 +69,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 	'activity.adjustments': 'Activity - Adjustments',
 	'view_logbook': 'Logbook - See Entries',
 	'logbook_redact': 'Logbook - Redact Entries',
+	'logbook_delete': 'Logbook - Delete Entries',
 	'logbook_note': 'Logbook - Note',
 	'logbook_warning': 'Logbook - Warning',
 	'logbook_promotion': 'Logbook - Promotion',
@@ -190,7 +191,7 @@ function getAction(action: string) {
 	}
 }
 
-export async function logAudit(workspaceGroupId: number, userId: number | null, action: string, entity?: string, details?: AuditDetails) {
+export async function logAudit(workspaceGroupId: number, userId: number | bigint | null, action: string, entity?: string, details?: AuditDetails) {
 	try {
 		const p: any = prisma as any;
 		if (p && p.auditLog) {
