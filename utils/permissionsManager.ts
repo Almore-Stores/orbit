@@ -316,7 +316,7 @@ export async function checkGroupRoles(groupID: number) {
 
     try {
       const [logo, group] = await Promise.all([
-        noblox.getLogo(groupID).catch(() => null),
+        noblox.getLogo(groupID, '420x420').catch(() => null),
         noblox.getGroup(groupID).catch(() => null),
       ]);
       if (logo || group) {
@@ -860,6 +860,15 @@ export async function checkSpecificUser(userID: number | bigint) {
         },
       },
     });
-    return true;
   }
+  const workspaceData = await prisma.workspaceMember.findMany({
+    where: {
+      userId: userID
+    },
+    include: {
+      workspace: true
+    }
+  });
+
+  return workspaceData;
 }

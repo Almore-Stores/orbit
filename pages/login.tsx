@@ -66,8 +66,8 @@ const Login: NextPage = () => {
   const [signupStep, setSignupStep] = useState<0 | 1 | 2 | 3>(0);
   const [signupThumbnail, setSignupThumbnail] = useState("");
   const [signupDisplayName, setSignupDisplayName] = useState("");
+  const [signupUserid, setSignupUserid] = useState<number | undefined>(undefined);
   const [verificationCode, setVerificationCode] = useState("");
-  const [verificationToken, setVerificationToken] = useState(""); // <-- new
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showCopyright, setShowCopyright] = useState(false);
@@ -87,7 +87,6 @@ const Login: NextPage = () => {
     setSignupThumbnail("");
     setSignupDisplayName("");
     setVerificationCode("");
-    setVerificationToken("");
     setLoading(false);
     setUsernameCheckLoading(false);
     setUsernameAvailable(null);
@@ -187,46 +186,46 @@ const Login: NextPage = () => {
 
   // Step 2 → 3: call start, store both code and token
   const onSubmitSignup: SubmitHandler<SignupForm> = async ({ username, password, verifypassword }) => {
-    if (password !== verifypassword) {
-      setErrSignup("verifypassword", { type: "validate", message: "Passwords must match" });
-      return;
-    }
-    setLoading(true);
-    setVerificationError(null);
-    try {
-      const { data } = await axios.post("/api/auth/signup/start", { username });
-      setVerificationCode(data.code);
-      setVerificationToken(data.verificationToken); // <-- store token
-      setSignupStep(3);
-    } catch (e: any) {
-      setErrSignup("username", {
-        type: "custom",
-        message: e.response?.data?.error || "Unexpected error occurred.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (password !== verifypassword) {
+    setErrSignup("verifypassword", { type: "validate", message: "Passwords must match" });
+    return;
+  }
+  setLoading(true);
+  setVerificationError(null);
+  try {
+    const { data } = await axios.post("/api/auth/signup/start", { username });
+    setVerificationCode(data.code);
+    setSignupUserid(data.userid);
+    setSignupStep(3);
+  } catch (e: any) {
+    setErrSignup("username", {
+      type: "custom",
+      message: e.response?.data?.error || "Unexpected error occurred.",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Step 3: verify — pass token back to finish route
   const onVerifyAgain = async () => {
-    setLoading(true);
-    setVerificationError(null);
-    const { password } = getSignupValues();
-    try {
-      const { data } = await axios.post("/api/auth/signup/finish", {
-        password,
-        code: verificationCode,
-        verificationToken, // <-- send token
-      });
-      if (data.success) Router.push("/");
-      else setVerificationError("Verification failed. Please try again.");
-    } catch (e: any) {
-      setVerificationError(e?.response?.data?.error || "Verification not found. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  setVerificationError(null);
+  const { password } = getSignupValues();
+  try {
+    const { data } = await axios.post("/api/auth/signup/finish", {
+      password,
+      code: verificationCode,
+      userid: signupUserid,
+    });
+    if (data.success) Router.push("/");
+    else setVerificationError("Verification failed. Please try again.");
+  } catch (e: any) {
+    setVerificationError(e?.response?.data?.error || "Verification not found. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     if (!Router.isReady || errorToastShown.current) return;
@@ -305,23 +304,6 @@ const Login: NextPage = () => {
             <div className="relative rounded-2xl bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xl border border-zinc-200/60 dark:border-zinc-700/50 shadow-xl shadow-zinc-900/5 dark:shadow-black/20 p-8">
               <div className="absolute top-6 right-6">
                 <ThemeToggle />
-              </div>
-
-              <div className="flex gap-6 mb-8 border-b border-zinc-200 dark:border-zinc-600 -mx-1">
-                {mode !== "link" ? (
-                  ["login", ...(effectiveOAuthOnly ? [] : ["signup"])].map((m) => {
-                    const isActive = mode === m;
-                    return (
-                      <button key={m} onClick={() => setMode(m as any)}
-                        className={`pb-3 px-1 text-sm font-medium transition-colors border-b-2 -mb-px ${isActive ? "text-primary border-primary" : "text-zinc-500 dark:text-zinc-400 border-transparent hover:text-zinc-700 dark:hover:text-zinc-300"}`}
-                        type="button" disabled={loading}>
-                        {m === "login" ? "Login" : "Sign Up"}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <span className="pb-3 px-1 text-sm font-medium text-primary border-b-2 border-primary -mb-px">Link</span>
-                )}
               </div>
 
               {mode === "login" && (
