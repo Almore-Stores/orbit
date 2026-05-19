@@ -566,7 +566,7 @@ const Home: NextPage = () => {
                   workspace: {
                     groupId: number;
                     groupName: string;
-                    groupThumbnail?: string;
+                    groupLogo?: string;
                     customName?: string;
                   },
                   options: { featured: boolean; isPinnedHero?: boolean },
@@ -620,7 +620,7 @@ const Home: NextPage = () => {
                         )}
                       >
                         <img
-                          src={workspace.groupThumbnail || "/favicon-32x32.png"}
+                          src={workspace.groupLogo || "/favicon-32x32.png"}
                           alt=""
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
