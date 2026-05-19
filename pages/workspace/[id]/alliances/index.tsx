@@ -6,9 +6,8 @@ import { useRouter } from "next/router";
 import { useState, Fragment, useMemo, useEffect } from "react";
 import randomText from "@/utils/randomText";
 import { useRecoilState } from "recoil";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { InferGetServerSidePropsType } from "next";
-import { withSessionSsr } from "@/lib/withSession";
 import { Dialog, Transition } from "@headlessui/react";
 import { withPermissionCheckSsr } from "@/utils/permissionsManager";
 import { FormProvider, SubmitHandler, useForm } from "react-hook-form";
@@ -33,11 +32,12 @@ type Form = {
 
 export const getServerSideProps = withPermissionCheckSsr(
   async ({ req, res, params }) => {
+    const wsId = parseInt(params?.id as string, 10);
     let users = await prisma.user.findMany({
       where: {
         roles: {
           some: {
-            workspaceGroupId: parseInt(params?.id as string),
+            workspaceGroupId: wsId,
             permissions: {
               has: "represent_alliance",
             },
@@ -57,7 +57,7 @@ export const getServerSideProps = withPermissionCheckSsr(
 
     const allies: any = await prisma.ally.findMany({
       where: {
-        workspaceGroupId: parseInt(params?.id as string),
+        workspaceGroupId: wsId,
       },
       include: {
         reps: true,
@@ -245,8 +245,6 @@ const Allies: pageWithLayout<pageProps> = (props) => {
 
   return (
     <>
-      <Toaster position="bottom-center" />
-
       <div className="pagePadding">
         <div className="max-w-5xl mx-auto">
           <header className="mb-8">

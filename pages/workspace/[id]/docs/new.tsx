@@ -31,10 +31,17 @@ import prisma from "@/utils/database";
 import { useForm, FormProvider } from "react-hook-form";
 import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import clsx from "clsx";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
+
+const serializeBigInt = (obj: any) =>
+  JSON.parse(
+    JSON.stringify(obj, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
 
 export const getServerSideProps: GetServerSideProps = withPermissionCheckSsr(
   async (context) => {
@@ -59,10 +66,10 @@ export const getServerSideProps: GetServerSideProps = withPermissionCheckSsr(
     });
 
     return {
-      props: {
+      props: serializeBigInt({
         roles,
         departments,
-      },
+      }),
     };
   },
   "create_docs"
@@ -247,7 +254,6 @@ const Home: pageWithLayout<InferGetServerSidePropsType<GetServerSideProps>> = ({
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-      <Toaster position="bottom-center" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
         <div className="flex items-center gap-4 mb-8">
           <button

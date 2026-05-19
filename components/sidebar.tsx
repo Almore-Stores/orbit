@@ -203,9 +203,11 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
   const [alliesEnabled, setAlliesEnabled] = useState(false);
   const [sessionsEnabled, setSessionsEnabled] = useState(false);
   const [noticesEnabled, setNoticesEnabled] = useState(false);
+  const [resignationsEnabled, setResignationsEnabled] = useState(false);
   const [policiesEnabled, setPoliciesEnabled] = useState(false);
   const [pendingPolicyCount, setPendingPolicyCount] = useState(0);
   const [pendingNoticesCount, setPendingNoticesCount] = useState(0);
+  const [pendingResignationsCount, setPendingResignationsCount] = useState(0);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [mobileMoreVisible, setMobileMoreVisible] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -272,6 +274,13 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
     return () => document.body.classList.remove("overflow-hidden");
   }, [isMobileMenuOpen]);
 
+  const navBadgeCount = (pageName: string) => {
+    if (pageName === "Policies") return pendingPolicyCount;
+    if (pageName === "Notices")
+      return pendingNoticesCount + pendingResignationsCount;
+    return 0;
+  };
+
   const pages: {
     name: string;
     href: string;
@@ -279,18 +288,18 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
     filledIcon?: React.ElementType;
     accessible?: boolean;
   }[] = [
-    { name: "Home", href: `/workspace/${workspace.groupId}`, icon: IconHome, filledIcon: IconHomeFilled },
-    { name: "Wall", href: `/workspace/${workspace.groupId}/wall`, icon: IconMessage2, filledIcon: IconMessage2Filled, accessible: workspace.yourPermission.includes("view_wall") },
-    { name: "Activity", href: `/workspace/${workspace.groupId}/activity`, icon: IconClipboardList, filledIcon: IconClipboardListFilled, accessible: true },
-    { name: "Quotas", href: `/workspace/${workspace.groupId}/quotas`, icon: IconTarget, accessible: true },
-    ...(noticesEnabled ? [{ name: "Notices", href: `/workspace/${workspace.groupId}/notices`, icon: IconClock, filledIcon: IconClockFilled, accessible: true }] : []),
-    ...(alliesEnabled ? [{ name: "Alliances", href: `/workspace/${workspace.groupId}/alliances`, icon: IconRosetteDiscountCheck, filledIcon: IconRosetteDiscountCheckFilled, accessible: true }] : []),
-    ...(sessionsEnabled ? [{ name: "Sessions", href: `/workspace/${workspace.groupId}/sessions`, icon: IconBell, filledIcon: IconBellFilled, accessible: true }] : []),
-    { name: "Staff", href: `/workspace/${workspace.groupId}/views`, icon: IconUser, filledIcon: IconUserFilled, accessible: workspace.yourPermission.includes("view_members") },
-    ...(docsEnabled ? [{ name: "Docs", href: `/workspace/${workspace.groupId}/docs`, icon: IconFileText, filledIcon: IconFileTextFilled, accessible: true }] : []),
-    ...(policiesEnabled ? [{ name: "Policies", href: `/workspace/${workspace.groupId}/policies`, icon: IconShield, filledIcon: IconShieldFilled, accessible: true }] : []),
-    { name: "Settings", href: `/workspace/${workspace.groupId}/settings`, icon: IconSettings, filledIcon: IconSettingsFilled, accessible: ["admin", "workspace_customisation", "reset_activity", "manage_features", "manage_apikeys", "view_audit_logs"].some((perm) => workspace.yourPermission.includes(perm)) },
-  ];
+      { name: "Home", href: `/workspace/${workspace.groupId}`, icon: IconHome, filledIcon: IconHomeFilled },
+      { name: "Wall", href: `/workspace/${workspace.groupId}/wall`, icon: IconMessage2, filledIcon: IconMessage2Filled, accessible: workspace.yourPermission.includes("view_wall") },
+      { name: "Activity", href: `/workspace/${workspace.groupId}/activity`, icon: IconClipboardList, filledIcon: IconClipboardListFilled, accessible: true },
+      { name: "Quotas", href: `/workspace/${workspace.groupId}/quotas`, icon: IconTarget, accessible: true },
+      ...(noticesEnabled ? [{ name: "Notices", href: `/workspace/${workspace.groupId}/notices`, icon: IconClock, filledIcon: IconClockFilled, accessible: true }] : []),
+      ...(alliesEnabled ? [{ name: "Alliances", href: `/workspace/${workspace.groupId}/alliances`, icon: IconRosetteDiscountCheck, filledIcon: IconRosetteDiscountCheckFilled, accessible: true }] : []),
+      ...(sessionsEnabled ? [{ name: "Sessions", href: `/workspace/${workspace.groupId}/sessions`, icon: IconBell, filledIcon: IconBellFilled, accessible: true }] : []),
+      { name: "Staff", href: `/workspace/${workspace.groupId}/views`, icon: IconUser, filledIcon: IconUserFilled, accessible: workspace.yourPermission.includes("view_members") },
+      ...(docsEnabled ? [{ name: "Docs", href: `/workspace/${workspace.groupId}/docs`, icon: IconFileText, filledIcon: IconFileTextFilled, accessible: true }] : []),
+      ...(policiesEnabled ? [{ name: "Policies", href: `/workspace/${workspace.groupId}/policies`, icon: IconShield, filledIcon: IconShieldFilled, accessible: true }] : []),
+      { name: "Settings", href: `/workspace/${workspace.groupId}/settings`, icon: IconSettings, filledIcon: IconSettingsFilled, accessible: ["admin", "workspace_customisation", "reset_activity", "manage_features", "manage_apikeys", "view_audit_logs"].some((perm) => workspace.yourPermission.includes(perm)) },
+    ];
 
   const visiblePages = pages.filter((p) => p.accessible === undefined || p.accessible);
   const bottomBarPages = visiblePages.slice(0, 4);
@@ -331,6 +340,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
         setAlliesEnabled(data.value?.allies?.enabled ?? false);
         setSessionsEnabled(data.value?.sessions?.enabled ?? false);
         setNoticesEnabled(data.value?.notices?.enabled ?? false);
+        setResignationsEnabled(data.value?.resignations?.enabled ?? false);
         setPoliciesEnabled(data.value?.policies?.enabled ?? false);
       })
       .catch(() => setDocsEnabled(false));
@@ -354,6 +364,28 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
     }
   }, [workspace.groupId, noticesEnabled, workspace.yourPermission]);
 
+  useEffect(() => {
+    if (
+      noticesEnabled &&
+      resignationsEnabled &&
+      (workspace.yourPermission?.includes("approve_resignations") ||
+        workspace.yourPermission?.includes("manage_resignations") ||
+        workspace.yourPermission?.includes("admin"))
+    ) {
+      fetch(`/api/workspace/${workspace.groupId}/resignations/count`)
+        .then((res) => res.json())
+        .then((data) => data.success && setPendingResignationsCount(data.count || 0))
+        .catch(() => setPendingResignationsCount(0));
+    } else {
+      setPendingResignationsCount(0);
+    }
+  }, [
+    workspace.groupId,
+    noticesEnabled,
+    resignationsEnabled,
+    workspace.yourPermission,
+  ]);
+
   return (
     <>
       <div
@@ -366,8 +398,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
         <aside
           className={clsx(
             "h-full flex flex-col flex-1 min-w-0",
-            "bg-white/80 dark:bg-zinc-950/95 backdrop-blur-xl",
-            "border-r border-zinc-200/40 dark:border-zinc-800/80"
+            "bg-zinc-50 dark:bg-zinc-950"
           )}
         >
           <div className="flex flex-col h-full min-h-0 py-4 px-3 pb-4">
@@ -461,47 +492,37 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
               </Listbox>
             </div>
 
-            <nav className="flex-1 mt-6 space-y-0.5 min-h-0 overflow-y-auto overflow-x-hidden">
+            <nav className="flex-1 mt-5 space-y-0.5 min-h-0 overflow-y-auto overflow-x-hidden">
               {visiblePages.map((page) => {
                 const isActive = router.asPath === page.href.replace("[id]", workspace.groupId.toString());
                 const IconComponent = isActive ? (page.filledIcon || page.icon) : page.icon;
+                const badge = navBadgeCount(page.name);
                 return (
                   <button
                     key={page.name}
                     type="button"
                     onClick={() => gotopage(page.href)}
                     className={clsx(
-                      "w-full flex items-center gap-3 rounded-xl py-2.5 px-3 text-left outline-none select-none transition-colors duration-200",
-                      "focus-visible:ring-0 active:bg-transparent",
+                      "w-full flex items-center gap-2.5 rounded-xl py-2 px-2.5 text-left outline-none select-none transition-all duration-150",
                       isActive
-                        ? "bg-[color:rgb(var(--group-theme)/0.1)] text-[color:rgb(var(--group-theme))]"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40",
-                      isCollapsed && "justify-center px-2"
+                        ? "bg-[color:rgb(var(--group-theme)/0.08)] text-[color:rgb(var(--group-theme))] font-semibold"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50",
+                      isCollapsed && "justify-center px-2 relative",
                     )}
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
-                    <IconComponent className="w-5 h-5 shrink-0" stroke={1.5} />
+                    <IconComponent className={clsx("w-[18px] h-[18px] shrink-0", isActive && "drop-shadow-sm")} stroke={isActive ? 2 : 1.75} />
                     {!isCollapsed && (
-                      <span className="flex-1 truncate text-sm font-medium">{page.name}</span>
+                      <span className="flex-1 truncate text-[13px]">{page.name}</span>
                     )}
-                    {!isCollapsed && page.name === "Policies" && (
-                      <>
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md">BETA</span>
-                        {pendingPolicyCount > 0 && (
-                          <span className="min-w-[1.25rem] h-5 px-1.5 rounded-md bg-red-500 text-white text-xs font-semibold flex items-center justify-center">
-                            {pendingPolicyCount}
-                          </span>
-                        )}
-                      </>
-                    )}
-                    {!isCollapsed && page.name === "Notices" && pendingNoticesCount > 0 && (
-                      <span className="min-w-[1.25rem] h-5 px-1.5 rounded-md bg-amber-500 text-white text-xs font-semibold flex items-center justify-center">
-                        {pendingNoticesCount}
+                    {!isCollapsed && badge > 0 && (
+                      <span className="min-w-[1.25rem] h-4.5 px-1.5 py-0.5 rounded-full bg-[color:rgb(var(--group-theme))] text-white text-[10px] font-semibold flex items-center justify-center leading-none">
+                        {badge}
                       </span>
                     )}
-                    {isCollapsed && (page.name === "Policies" && pendingPolicyCount > 0 || page.name === "Notices" && pendingNoticesCount > 0) && (
-                      <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                        {page.name === "Policies" ? pendingPolicyCount : pendingNoticesCount}
+                    {isCollapsed && badge > 0 && (
+                      <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-[color:rgb(var(--group-theme))] text-white text-[8px] font-bold flex items-center justify-center">
+                        {badge}
                       </span>
                     )}
                   </button>
@@ -509,14 +530,14 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
               })}
             </nav>
 
-            <div className={clsx("shrink-0 mt-auto pt-4 flex flex-col gap-2 overflow-visible", !isCollapsed && "border-t border-zinc-200/50 dark:border-zinc-800/80")}>
+            <div className="shrink-0 mt-auto pt-3 flex flex-col gap-1.5 overflow-visible">
               <button
                 type="button"
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="hidden lg:flex items-center justify-center rounded-xl py-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50 transition-colors outline-none w-full"
+                className="hidden lg:flex items-center justify-center rounded-xl py-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors outline-none w-full"
                 aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
-                <IconChevronLeft className={clsx("w-4 h-4 transition-transform duration-300", isCollapsed && "rotate-180")} stroke={1.5} />
+                <IconChevronLeft className={clsx("w-3.5 h-3.5 transition-transform duration-300", isCollapsed && "rotate-180")} stroke={2} />
               </button>
 
               <Menu as="div" className="relative">
@@ -621,25 +642,20 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
         ref={navRef}
         className={clsx(
           "fixed bottom-0 inset-x-0 z-[99990]",
-          "bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl",
-          "border-t border-zinc-200/50 dark:border-zinc-800/80",
+          "bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-xl",
+          "border-t border-zinc-200/60 dark:border-zinc-800/60",
           isStandalone ? "flex flex-col" : "lg:hidden flex flex-col"
         )}
         style={{
-          WebkitTransform: "translateZ(0)",
-          transform: "translateZ(0)",
-          willChange: "transform",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
         <div className="flex items-stretch h-16 w-full">
           {bottomBarPages.map((page) => {
             const isActive = router.asPath === page.href.replace("[id]", workspace.groupId.toString());
             const IconComponent = isActive ? (page.filledIcon || page.icon) : page.icon;
-            const hasBadge =
-              (page.name === "Policies" && pendingPolicyCount > 0) ||
-              (page.name === "Notices" && pendingNoticesCount > 0);
-            const badgeCount = page.name === "Policies" ? pendingPolicyCount : pendingNoticesCount;
+            const hasBadge = navBadgeCount(page.name) > 0;
+            const badgeCount = navBadgeCount(page.name);
 
             return (
               <button
@@ -657,7 +673,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                 <div className="relative">
                   <IconComponent className="w-6 h-6" stroke={1.5} />
                   {hasBadge && (
-                    <span className="absolute -top-1 -right-1.5 min-w-[1rem] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                    <span className="absolute -top-1 -right-1.5 min-w-[1rem] h-4 px-0.5 rounded-full bg-[color:rgb(var(--group-theme))] text-white text-[9px] font-bold flex items-center justify-center leading-none">
                       {badgeCount}
                     </span>
                   )}
@@ -692,11 +708,7 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
       </nav>
       <div
         className={clsx(isStandalone ? "block" : "lg:hidden block")}
-        style={{
-          height: `calc(64px + env(safe-area-inset-bottom, 0px))`,
-          flexShrink: 0,
-        }}
-        aria-hidden
+        style={{ height: "64px" }}
       />
       {mobileMoreOpen && (
         <>
@@ -761,10 +773,8 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
               {morePages.map((page) => {
                 const isActive = router.asPath === page.href.replace("[id]", workspace.groupId.toString());
                 const IconComponent = isActive ? (page.filledIcon || page.icon) : page.icon;
-                const hasBadge =
-                  (page.name === "Policies" && pendingPolicyCount > 0) ||
-                  (page.name === "Notices" && pendingNoticesCount > 0);
-                const badgeCount = page.name === "Policies" ? pendingPolicyCount : pendingNoticesCount;
+                const hasBadge = navBadgeCount(page.name) > 0;
+                const badgeCount = navBadgeCount(page.name);
 
                 return (
                   <button
@@ -782,15 +792,12 @@ const Sidebar: NextPage<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
                     <div className="relative shrink-0">
                       <IconComponent className="w-5 h-5" stroke={1.5} />
                       {hasBadge && (
-                        <span className="absolute -top-1 -right-1.5 min-w-[1rem] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                        <span className="absolute -top-1 -right-1.5 min-w-[1rem] h-4 px-0.5 rounded-full bg-[color:rgb(var(--group-theme))] text-white text-[9px] font-bold flex items-center justify-center leading-none">
                           {badgeCount}
                         </span>
                       )}
                     </div>
                     <span className="flex-1 text-sm font-medium truncate">{page.name}</span>
-                    {page.name === "Policies" && (
-                      <span className="px-1.5 py-0.5 text-[9px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md leading-none">BETA</span>
-                    )}
                   </button>
                 );
               })}

@@ -1,12 +1,10 @@
 import Activity from "@/components/profile/activity";
 import Book from "@/components/profile/book";
 import Notices from "@/components/profile/notices";
-import { Toaster } from "react-hot-toast";
 import { InformationTab } from "@/components/profile/information";
 import workspace from "@/layouts/workspace";
 import { pageWithLayout } from "@/layoutTypes";
 import { withPermissionCheckSsr } from "@/utils/permissionsManager";
-import { withSessionSsr } from "@/lib/withSession";
 import { loginState } from "@/state";
 import { Tab } from "@headlessui/react";
 import {
@@ -14,25 +12,18 @@ import {
   getUsername,
   getThumbnail,
 } from "@/utils/userinfoEngine";
-import { ActivitySession, Quota, ActivityAdjustment } from "@prisma/client";
+import { ActivitySession, Quota } from "@prisma/client";
 import prisma from "@/utils/database";
 import moment from "moment";
-import { InferGetServerSidePropsType } from "next";
 import { useRecoilState } from "recoil";
 import {
   IconUserCircle,
   IconHistory,
-  IconBell,
   IconBook,
   IconClipboard,
-  IconChevronLeft,
-  IconChevronRight,
   IconCalendar,
   IconSun,
   IconMoon,
-  IconCloud,
-  IconStars,
-  IconExternalLink,
   IconBeach,
 } from "@tabler/icons-react";
 import { useRouter } from "next/router";
@@ -42,7 +33,7 @@ import noblox from "noblox.js";
 
 export const getServerSideProps = withPermissionCheckSsr(
   async ({ query, req }) => {
-    const currentUserId = req.session?.userid;
+    const currentUserId = (req as any).auth?.userId as bigint;
     if (!currentUserId) return { notFound: true };
 
     const currentUser = await prisma.user.findFirst({
@@ -70,45 +61,18 @@ export const getServerSideProps = withPermissionCheckSsr(
         discordUser: true
       },
     });
+
     const membership = currentUser?.workspaceMemberships?.[0];
     const isAdmin = membership?.isAdmin || false;
+
+    // Define all permissions
     const hasManagePermission = isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("view_member_profiles")) ?? false);
-
-    const hasManageMembersPermission =
-      isAdmin ||
-      (currentUser?.roles?.some((role) =>
-        role.permissions?.includes("edit_member_details")
-      ) ??
-        false);
-
-    const hasManageNoticesPermission =
-      isAdmin ||
-      (currentUser?.roles?.some((role) =>
-        role.permissions?.includes("manage_notices")
-      ) ??
-        false);
-
-    const hasApproveNoticesPermission =
-      isAdmin ||
-      (currentUser?.roles?.some((role) =>
-        role.permissions?.includes("approve_notices")
-      ) ??
-        false);
-
-    const hasRecordNoticesPermission =
-      isAdmin ||
-      (currentUser?.roles?.some((role) =>
-        role.permissions?.includes("record_notices")
-      ) ??
-        false);
-
-    const hasActivityAdjustmentsPermission =
-      isAdmin ||
-      (currentUser?.roles?.some((role) =>
-        role.permissions?.includes("activity_adjustments")
-      ) ??
-        false);
-
+    const hasManageMembersPermission = isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("edit_member_details")) ?? false);
+    const hasManageNoticesPermission = isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("manage_notices")) ?? false);
+    const hasApproveNoticesPermission = isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("approve_notices")) ?? false);
+    const hasRecordNoticesPermission = isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("record_notices")) ?? false);
+    const hasActivityAdjustmentsPermission = isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("activity_adjustments")) ?? false);
+    
     const logbookPermissions = {
       view: isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("view_logbook")) ?? false),
       rank: isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("rank_users")) ?? false),
@@ -118,11 +82,16 @@ export const getServerSideProps = withPermissionCheckSsr(
       demotion: isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("logbook_demotion")) ?? false),
       termination: isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("logbook_termination")) ?? false),
       redact: isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("logbook_redact")) ?? false),
+      delete: isAdmin || (currentUser?.roles?.some((role) => role.permissions?.includes("logbook_delete")) ?? false),
     };
-
+    
     const hasAnyLogbookPermission = Object.values(logbookPermissions).some(p => p);
 
-    if (!hasManagePermission) {
+    // Check if user is viewing their own profile
+    const isSelfProfile = currentUserId.toString() === query.uid;
+    
+    // Allow viewing own profile even without manage permission
+    if (!hasManagePermission && !isSelfProfile) {
       return { notFound: true };
     }
 
@@ -178,7 +147,6 @@ export const getServerSideProps = withPermissionCheckSsr(
       },
     });
 
-    // Use last reset date, or November 30th 2024, whichever is more recent
     const nov30 = new Date("2024-11-30T00:00:00Z");
     const startDate = lastReset?.resetAt
       ? lastReset.resetAt > nov30
@@ -292,7 +260,7 @@ export const getServerSideProps = withPermissionCheckSsr(
       timeSpent = completedSessions.reduce((sum, session) => {
         const totalTime =
           (session.endTime?.getTime() ?? 0) - session.startTime.getTime();
-        const idleTime = session.idleTime ? Number(session.idleTime) : 0; // Already in minutes from Roblox
+        const idleTime = session.idleTime ? Number(session.idleTime) : 0;
         return sum + Math.max(0, totalTime - idleTime * 60000);
       }, 0);
       timeSpent = Math.round(timeSpent / 60000);
@@ -608,6 +576,23 @@ export const getServerSideProps = withPermissionCheckSsr(
       return { notFound: true };
     }
 
+    // For self-profile viewing, grant view permission for logbook but not edit permissions
+    const finalLogbookPermissions = isSelfProfile ? {
+      ...logbookPermissions,
+      view: true,  // Users can view their own logbook
+      // Keep all edit permissions as false for self (can't edit own logbook)
+      rank: false,
+      note: false,
+      warning: false,
+      promotion: false,
+      demotion: false,
+      termination: false,
+      redact: false,
+      delete: false,
+    } : logbookPermissions;
+
+    const finalLogbookEnabled = isSelfProfile ? true : hasAnyLogbookPermission;
+
     return {
       props: {
         notices: JSON.parse(
@@ -634,7 +619,7 @@ export const getServerSideProps = withPermissionCheckSsr(
           displayName: await getDisplayName(Number(query?.uid as string)),
           avatar: getThumbnail(Number(query?.uid as string)),
         },
-        isUser: (req as any)?.session?.userid === Number(query?.uid as string),
+        isUser: isSelfProfile,
         isAdmin,
         sessionsHosted: sessionsHosted,
         sessionsAttended: sessionsAttended,
@@ -679,8 +664,9 @@ export const getServerSideProps = withPermissionCheckSsr(
         canApproveNotices: hasApproveNoticesPermission,
         canRecordNotices: hasRecordNoticesPermission,
         canAdjustActivity: hasActivityAdjustmentsPermission,
-        logbookEnabled: hasAnyLogbookPermission,
-        logbookPermissions,
+        logbookEnabled: finalLogbookEnabled,
+        logbookPermissions: finalLogbookPermissions,
+        canEditBasicInfo: isSelfProfile,
       },
     };
   }
@@ -755,6 +741,7 @@ type pageProps = {
   canManageNotices: boolean;
   canApproveNotices: boolean;
   canRecordNotices: boolean;
+  canEditBasicInfo: boolean;
   canAdjustActivity: boolean;
   logbookEnabled: boolean;
   logbookPermissions: {
@@ -766,8 +753,10 @@ type pageProps = {
     demotion: boolean;
     termination: boolean;
     redact: boolean;
+    delete: boolean;
   };
 };
+
 const Profile: pageWithLayout<pageProps> = ({
   notices,
   timeSpent,
@@ -792,6 +781,7 @@ const Profile: pageWithLayout<pageProps> = ({
   allMembers,
   noticesEnabled,
   canManageMembers,
+  canEditBasicInfo,
   canManageNotices,
   canApproveNotices,
   canRecordNotices,
@@ -806,6 +796,7 @@ const Profile: pageWithLayout<pageProps> = ({
   const [historicalData, setHistoricalData] = useState<any>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [availableHistory, setAvailableHistory] = useState<any[]>([]);
+  
   const currentData = {
     timeSpent,
     timesPlayed,
@@ -826,6 +817,7 @@ const Profile: pageWithLayout<pageProps> = ({
   };
 
   const router = useRouter();
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -994,14 +986,13 @@ const Profile: pageWithLayout<pageProps> = ({
 
   return (
     <div className="pagePadding">
-      <Toaster position="bottom-center" />
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200/80 bg-gradient-to-br from-white to-zinc-50/80 shadow-sm dark:border-zinc-600/50 dark:from-zinc-800 dark:to-zinc-800/90 dark:shadow-none">
-          <div className="flex flex-col gap-5 p-5 sm:p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200/80 bg-gradient-to-br from-white via-white to-zinc-50/90 shadow-sm ring-1 ring-zinc-950/5 dark:border-zinc-700/60 dark:from-zinc-800 dark:via-zinc-800 dark:to-zinc-900/95 dark:shadow-none dark:ring-white/5">
+          <div className="flex flex-col gap-5 p-5 sm:p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
             <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
               <div className="relative flex-shrink-0">
                 <div
-                  className={`relative h-[72px] w-[72px] overflow-hidden rounded-2xl shadow-lg ring-2 ring-white dark:ring-zinc-700/80 sm:h-24 sm:w-24 ${getRandomBg(
+                  className={`relative h-[72px] w-[72px] overflow-hidden rounded-2xl shadow-md ring-2 ring-white/90 dark:ring-zinc-700/90 sm:h-24 sm:w-24 ${getRandomBg(
                     user.userid
                   )}`}
                 >
@@ -1012,11 +1003,11 @@ const Profile: pageWithLayout<pageProps> = ({
                     style={{ background: "transparent" }}
                   />
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-primary shadow ring-2 ring-white dark:ring-zinc-800 sm:h-7 sm:w-7">
+                <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-zinc-900/90 shadow-md ring-2 ring-white dark:bg-zinc-950 dark:ring-zinc-800 sm:h-7 sm:w-7">
                   <IconUserCircle className="h-3.5 w-3.5 text-white sm:h-4 sm:w-4" />
                 </div>
               </div>
-              <div className="min-w-0 flex-1 space-y-1">
+              <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="truncate text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl dark:text-white">
                     {info.displayName}
@@ -1049,15 +1040,15 @@ const Profile: pageWithLayout<pageProps> = ({
                   {info.username}
                 </p>
                 {memberRoleName && (
-                  <p className="pt-0.5">
-                    <span className="inline-flex max-w-full items-center rounded-md border border-zinc-200/90 bg-zinc-100/90 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:border-zinc-600/80 dark:bg-zinc-700/50 dark:text-zinc-200">
+                  <p>
+                    <span className="inline-flex max-w-full items-center rounded-full border border-zinc-200/80 bg-zinc-100/80 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-600/70 dark:bg-zinc-700/45 dark:text-zinc-200">
                       <span className="truncate">{memberRoleName}</span>
                     </span>
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex flex-shrink-0 flex-wrap items-center gap-2 sm:justify-end sm:gap-2.5">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-2">
               {workspaceMember &&
                 workspaceMember.timezone &&
                 (() => {
@@ -1070,7 +1061,7 @@ const Profile: pageWithLayout<pageProps> = ({
                   const isDay = hour >= 6 && hour < 18;
 
                   return (
-                    <div className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-200/90 bg-zinc-100/90 px-3 text-zinc-800 dark:border-zinc-600/70 dark:bg-zinc-700/40 dark:text-zinc-100">
+                    <div className="inline-flex h-9 items-center gap-2 rounded-full border border-zinc-200/80 bg-white/80 px-3 text-zinc-800 shadow-sm backdrop-blur-sm dark:border-zinc-600/60 dark:bg-zinc-900/50 dark:text-zinc-100">
                       {isDay ? (
                         <IconSun className="h-4 w-4 shrink-0 text-amber-500" />
                       ) : (
@@ -1091,11 +1082,16 @@ const Profile: pageWithLayout<pageProps> = ({
                 href={`https://www.roblox.com/users/${user.userid}/profile`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-3.5 text-sm font-medium text-white shadow-sm transition-[filter] hover:brightness-105 active:brightness-95 sm:px-4"
+                title="Open profile on Roblox"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color:rgb(var(--group-theme))] text-white shadow-sm shadow-black/10 ring-1 ring-black/10 transition hover:opacity-90 active:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:rgb(var(--group-theme)/0.45)] focus-visible:ring-offset-2 dark:ring-white/10 dark:shadow-black/30 dark:focus-visible:ring-offset-zinc-900"
               >
-                <IconExternalLink className="h-4 w-4 shrink-0 opacity-95" />
-                <span className="hidden sm:inline">View on Roblox</span>
-                <span className="sm:hidden">Roblox</span>
+                <img
+                  src="/roblox.svg"
+                  alt=""
+                  className="h-[18px] w-[18px]"
+                  aria-hidden
+                />
+                <span className="sr-only">Open profile on Roblox</span>
               </a>
             </div>
           </div>
@@ -1176,6 +1172,7 @@ const Profile: pageWithLayout<pageProps> = ({
                   allMembers={allMembers}
                   isUser={isUser}
                   isAdmin={isAdmin}
+                  canEditBasicInfo={canEditBasicInfo}
                   canEditMembers={canManageMembers}
                 />
               </Tab.Panel>

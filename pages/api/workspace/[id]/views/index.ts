@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import prisma from "@/utils/database";
 import { v4 as uuidv4 } from "uuid";
-import { withSessionRoute } from "@/lib/withSession";
+import { SAVED_VIEW_NAME_MAX_LENGTH } from "@/utils/savedViewLimits";
+import { AuthenticatedRequest, withAuth } from "@/lib/withAuth";
 
-async function hasManageViewsPermission(req: NextApiRequest, workspaceId: number) {
+async function hasManageViewsPermission(req: AuthenticatedRequest, workspaceId: number) {
   if (!req.session?.userid) return false;
   const user = await prisma.user.findFirst({
-    where: { userid: BigInt(req.session.userid) },
+    where: { userid: BigInt(req.auth.userId) },
     include: {
       roles: {
         where: { workspaceGroupId: workspaceId },
@@ -23,7 +24,7 @@ async function hasManageViewsPermission(req: NextApiRequest, workspaceId: number
   return isAdmin || (role.permissions || []).includes("create_views") || (role.permissions || []).includes("edit_views") || (role.permissions || []).includes("delete_views");
 }
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   const workspaceId = Number(req.query.id as string);
   if (!workspaceId) return res.status(400).json({ success: false, error: "Missing workspace ID" });
 
@@ -34,9 +35,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (req.method === "POST") {
-      if (!req.session?.userid) return res.status(401).json({ success: false, error: "Unauthorized" });
+      if (!req.auth.userId) return res.status(401).json({ success: false, error: "Unauthorized" });
       const user = await prisma.user.findFirst({
-        where: { userid: BigInt(req.session.userid) },
+        where: { userid: BigInt(req.auth.userId) },
         include: {
           roles: { where: { workspaceGroupId: workspaceId } },
           workspaceMemberships: { where: { workspaceGroupId: workspaceId } },
@@ -49,13 +50,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (!hasCreatePermission) return res.status(401).json({ success: false, error: "Unauthorized" });
 
       const { name, color, icon, filters, columnVisibility } = req.body;
-      if (!name) return res.status(400).json({ success: false, error: "Missing name" });
+      const nameStr =
+        typeof name === "string" ? name.trim() : String(name ?? "").trim();
+      if (!nameStr) return res.status(400).json({ success: false, error: "Missing name" });
+      if (nameStr.length > SAVED_VIEW_NAME_MAX_LENGTH) {
+        return res.status(400).json({
+          success: false,
+          error: `Name must be at most ${SAVED_VIEW_NAME_MAX_LENGTH} characters`,
+        });
+      }
 
       const newView = await prisma.savedView.create({
         data: {
           id: uuidv4(),
           workspaceGroupId: workspaceId,
-          name,
+          name: nameStr,
           color: color || null,
           icon: icon || null,
           filters: filters || [],
@@ -73,4 +82,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-export default withSessionRoute(handler);
+export default withAuth(handler);

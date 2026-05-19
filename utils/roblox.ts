@@ -34,10 +34,46 @@ export async function initiateClient(apiKey: string) {
   return Client
 }
 
-export interface UserRankInfo {
-  rank: number;
-  roleName: string;
-  roleId: string;
+async function listAllGroupRolesForGroup(client: any, groupId: string) {
+  const all: any[] = [];
+  const seen = new Set<string>();
+  let pageToken: string | undefined;
+
+  while (true) {
+    const res: any = await withTimeout(
+      client.groups.listGroupRoles(groupId, {
+        maxPageSize: 20,
+        ...(pageToken ? { pageToken } : {}),
+      })
+    );
+
+    const roles =
+      res.groupRoles ??
+      res.roles ??
+      res.data?.groupRoles ??
+      [];
+
+    for (const role of roles) {
+      if (!role?.id) continue;
+      if (seen.has(role.id)) continue;
+
+      seen.add(role.id);
+      all.push(role);
+    }
+
+    const next =
+      res.nextPageToken ??
+      res.data?.nextPageToken;
+
+    if (!next || next === pageToken) break;
+
+    pageToken = next;
+  }
+
+  return all;
+}
+function robloxRankNum(roleLike: { rank?: unknown }): number {
+  return Number(roleLike.rank);
 }
 
 export async function getUserRank(
@@ -49,23 +85,17 @@ export async function getUserRank(
 
   try {
     if (Client) {
-      // OpenCloud path
       const memberships = await withTimeout<any>(
         Client.groups.listGroupMemberships(groupid.toString(), {
           filter: `user == 'users/${userid}'`,
         })
       );
 
-      if (!memberships.groupMemberships || memberships.groupMemberships.length === 0) {
-        return null;
-      }
+      if (!memberships.groupMemberships?.length) return null;
 
       const membership = memberships.groupMemberships[0];
       const roleId = membership.role.split("/").pop();
-
-      if (!roleId) {
-        return null;
-      }
+      if (!roleId) return null;
 
       const groupRole = await withTimeout<any>(
         Client.groups.getGroupRole(groupid.toString(), roleId)
@@ -73,9 +103,10 @@ export async function getUserRank(
 
       return {
         rank: groupRole.rank,
-        roleName: groupRole.displayName ?? groupRole.name,
-        roleId,
+        roleName: groupRole.displayName ?? groupRole.name ?? "Unknown",
+        roleId: roleId,
       };
+
     } else {
       const [rank, roles] = await withTimeout<any>(
         Promise.all([
@@ -93,53 +124,127 @@ export async function getUserRank(
       };
     }
   } catch (error) {
-    console.error(`Error getting rank for user ${userid} in group ${groupid}:`, error);
+    console.error(
+      `Error getting rank for user ${userid} in group ${groupid}:`,
+      error
+    );
     return null;
   }
 }
 
+function userInfoFromNobloxPayload(userInfo: any): RobloxUserInfo {
+  const username = userInfo?.Username ?? userInfo?.name ?? "Unknown User";
+  const displayName =
+    userInfo?.displayName ??
+    userInfo?.DisplayName ??
+    userInfo?.Username ??
+    userInfo?.name ??
+    "Unknown User";
+  return { username, displayName };
+}
+
 export async function getRobloxUserInfo(id: number | bigint, apiKey?: string): Promise<RobloxUserInfo> {
-  const Client = apiKey ? await initiateClient(apiKey) : undefined;
+  const fromNoblox = async () => {
+    const userInfo = await withTimeout<any>(noblox.getUserInfo(Number(id)));
+    return userInfoFromNobloxPayload(userInfo);
+  };
+
+  if (!apiKey) {
+    try {
+      return await fromNoblox();
+    } catch (error) {
+      console.error(`Error getting user info for user ${id}:`, error);
+      return { username: "Unknown User", displayName: "Unknown User" };
+    }
+  }
+
   try {
-    const userInfo = await withTimeout<any>(
-      Client
-        ? Client.users.get(id.toString())
-        : noblox.getUserInfo(Number(id))
-    );
+    const Client = await initiateClient(apiKey);
+    const userInfo = await withTimeout<any>(Client.users.get(id.toString()));
     return {
       username: userInfo.name ?? "Unknown User",
       displayName: userInfo.displayName ?? userInfo.name ?? "Unknown User",
     };
-  } catch (error) {
-    console.error(`Error getting user info for user ${id}:`, error);
-    return { username: "Unknown User", displayName: "Unknown User" };
+  } catch (openCloudError) {
+    try {
+      return await fromNoblox();
+    } catch (nobloxError) {
+      console.error(
+        `[getRobloxUserInfo] user ${id} failed after noblox fallback:`,
+        nobloxError
+      );
+      return { username: "Unknown User", displayName: "Unknown User" };
+    }
   }
+}
+
+async function getAllRoles(groupId: number, apiKey: string) {
+  const roles: any[] = [];
+  let pageToken: string | undefined = undefined;
+  const seen = new Set<string>();
+
+  do {
+    const res = await axios.get(
+      `https://apis.roblox.com/cloud/v2/groups/${groupId}/roles`,
+      {
+        params: {
+          maxPageSize: 20,
+          pageToken,
+        },
+        headers: {
+          "x-api-key": apiKey,
+        },
+      }
+    );
+
+    const data: any = res.data;
+
+    for (const role of data.groupRoles || []) {
+      if (seen.has(role.id)) continue;
+      seen.add(role.id);
+      roles.push(role);
+    }
+
+    pageToken = data.nextPageToken;
+
+    if (!pageToken) break;
+
+  } while (true);
+
+  return roles;
 }
 
 export async function terminateUser(userid: number, groupid: number, apiKey: string) {
   const Client = await initiateClient(apiKey);
+
   try {
-    // read group ranks
-    const roles = await Client.groups.listGroupRoles(groupid.toString());
-    const targetRole = roles.groupRoles.find((grole) => grole.rank == 1) // guest role;
+    const groupRolesList = await getAllRoles(groupid, apiKey)
+    const targetRole = groupRolesList.find((grole) => Number(grole.rank) === 1);
     if (!targetRole) {
-      console.log("[Integrated Ranking]: Couldn't find role with rank id 1.")
-      return {
-        success: false,
-        error: "Couldn't find role with rank id 1."
-      }
+      console.log("[Integrated Ranking]: Couldn't find role with rank 1.");
+      return { success: false, error: "No rank 1 role found." };
     }
-    await Client.groups.updateGroupMembership(groupid.toString(), userid.toString(), targetRole.id);
-    return {
-      success: true,
-      message: "User ranked successfully."
-    }
+
+    await Client.groups.updateGroupMembership(
+      groupid.toString(),
+      userid.toString(),
+      targetRole.id
+    );
+
+    return { success: true, message: "User ranked successfully." };
+
   } catch (err) {
-    console.log("[Integrated Ranking]: An issue occured while ")
+    console.log("[Integrated Ranking]: Error:", err);
+    return { success: false, error: "Unexpected error" };
   }
 }
 
-export async function promoteUser(userid: number, groupid: number, apiKey: string) {
+export async function promoteUser(
+  userid: number,
+  groupid: number,
+  apiKey: string,
+  opts?: { maxPromotionRank?: number | null }
+) {
   const Client = await initiateClient(apiKey);
 
   try {
@@ -147,7 +252,7 @@ export async function promoteUser(userid: number, groupid: number, apiKey: strin
       filter: `user == 'users/${userid}'`
     });
 
-    const GroupRoles = await Client.groups.listGroupRoles(groupid.toString());
+    const groupRolesList = await getAllRoles(groupid, apiKey)
 
     if (userRoles.groupMemberships.length === 0) {
       return {
@@ -167,15 +272,26 @@ export async function promoteUser(userid: number, groupid: number, apiKey: strin
     }
 
     const groupRole = await Client.groups.getGroupRole(groupid.toString(), roleId);
+    const currentRank = robloxRankNum(groupRole);
 
-    const nextRole = GroupRoles.groupRoles
-      .filter((r) => r.rank > groupRole.rank)
-      .sort((a, b) => a.rank - b.rank)[0]; // sort in ascending order
+    const nextRole = groupRolesList
+      .filter((r) => robloxRankNum(r) > currentRank)
+      .sort((a, b) => robloxRankNum(a) - robloxRankNum(b))[0];
 
     if (!nextRole) {
       return {
         success: false,
         error: "User is already at highest rank."
+      };
+    }
+
+    if (
+      opts?.maxPromotionRank != null &&
+      robloxRankNum(nextRole) > opts.maxPromotionRank
+    ) {
+      return {
+        success: false,
+        error: `Integrated Ranking cannot promote past rank ${opts.maxPromotionRank}.`,
       };
     }
 
@@ -203,7 +319,7 @@ export async function demoteUser(userid: number, groupid: number, apiKey: string
       filter: `user == 'users/${userid}'`
     });
 
-    const GroupRoles = await Client.groups.listGroupRoles(groupid.toString());
+    const groupRolesList = await getAllRoles(groupid, apiKey)
 
     if (userRoles.groupMemberships.length === 0) {
       return {
@@ -223,10 +339,11 @@ export async function demoteUser(userid: number, groupid: number, apiKey: string
     }
 
     const groupRole = await Client.groups.getGroupRole(groupid.toString(), roleId);
+    const currentRank = robloxRankNum(groupRole);
 
-    const nextRole = GroupRoles.groupRoles
-      .filter((r) => r.rank < groupRole.rank)
-      .sort((a, b) => b.rank - a.rank)[0]; // sort in descending order
+    const nextRole = groupRolesList
+      .filter((r) => robloxRankNum(r) < currentRank)
+      .sort((a, b) => robloxRankNum(b) - robloxRankNum(a))[0];
 
     if (!nextRole) {
       return {
@@ -251,18 +368,34 @@ export async function demoteUser(userid: number, groupid: number, apiKey: string
   }
 }
 
-export async function rankChange(userid: number, groupid: number, rankid: number, apiKey: string) {
+export async function rankChange(
+  userid: number,
+  groupid: number,
+  rankid: number,
+  apiKey: string,
+  opts?: { maxPromotionRank?: number | null }
+) {
   const Client = await initiateClient(apiKey);
 
   try {
-    const GroupRoles = await Client.groups.listGroupRoles(groupid.toString());
-    const TargetRole = GroupRoles.groupRoles.find((grole) => grole.rank == rankid);
+    const groupRolesList = await getAllRoles(groupid, apiKey)
+    const TargetRole = groupRolesList.find((grole) => Number(grole.rank) === rankid);
 
     if (!TargetRole) {
       return {
         success: false,
         error: "Target role is non existent."
       }
+    }
+
+    if (
+      opts?.maxPromotionRank != null &&
+      robloxRankNum(TargetRole) > opts.maxPromotionRank
+    ) {
+      return {
+        success: false,
+        error: `Integrated Ranking cannot set rank above ${opts.maxPromotionRank}.`,
+      };
     }
 
     await Client.groups.updateGroupMembership(groupid.toString(), userid.toString(), TargetRole.id);
@@ -283,10 +416,8 @@ export async function rankChange(userid: number, groupid: number, rankid: number
 
 export async function getRobloxThumbnail(id: number | bigint): Promise<string | null> {
   try {
-    const thumbnails = await withTimeout(
-      noblox.getPlayerThumbnail(Number(id), "720x720", "png", false, "headshot")
-    );
-    return thumbnails[0]?.imageUrl ?? "";
+    const thumbnail = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${id}&size=720x720&format=Png&isCircular=false`)
+    return thumbnail.data.data[0].state == "Completed" ? thumbnail.data.data[0].imageUrl : ""
   } catch (error) {
     console.error(`Error getting thumbnail for user ${id}:`, error);
     return null;

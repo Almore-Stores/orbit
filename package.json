@@ -1,16 +1,20 @@
 {
   "name": "orbit",
-  "version": "2.1.10beta7",
+  "version": "2.1.10beta9",
   "private": true,
+  "packageManager": "pnpm@10.18.2",
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next dev --webpack",
+    "dev": "next dev --webpack",
     "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next build --webpack",
-    "dev:https": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next dev --experimental-https --webpack",
-    "start": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next start",
-    "lint": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" next lint",
+    "dev:https": "next dev --experimental-https --webpack",
+    "start": "next start",
+    "lint": "next lint",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.2.0",
     "@intercom/messenger-js-sdk": "^0.0.14",
@@ -24,15 +28,14 @@
     "@tiptap/react": "^2.27.2",
     "@tiptap/starter-kit": "^2.27.2",
     "@types/formidable": "^3.5.1",
-    "@types/sanitize-html": "^2.16.1",
     "@types/uuid": "^9.0.8",
     "@types/zxcvbn": "^4.4.5",
-    "axios": "^1.15.0",
+    "axios": "^1.15.2",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
+    "cookie": "^1.1.1",
     "cross-env": "^10.1.0",
-    "crypto": "^1.0.1",
     "dotenv": "^16.6.1",
     "emoji-picker-react": "^4.18.0",
     "express-rate-limit": "^7.5.1",
@@ -45,12 +48,11 @@
     "is-svg": "^4.4.0",
     "moment": "^2.30.1",
     "moment-timezone": "^0.6.1",
-    "next": "^16.2.3",
+    "next": "^16.2.6",
     "noblox.js": "^7.3.1",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "pg": "^8.20.0",
-    "pnpm": "^10.33.2",
     "posthog-js": "^1.367.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
@@ -59,7 +61,6 @@
     "react-hook-form": "^7.72.1",
     "react-hot-toast": "^2.6.0",
     "react-markdown": "^10.1.0",
-    "react-use": "^17.6.0",
     "recoil": "^0.7.7",
     "rehype-sanitize": "^6.0.0",
     "rss-parser": "^3.13.0",
@@ -67,14 +68,12 @@
     "sass": "^1.99.0",
     "sharp": "^0.34.5",
     "tailwind-merge": "^2.6.1",
+    "ua-parser-js": "^2.0.9",
     "uuid": "^9.0.1",
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
     "@prisma/client": "^7.7.0",
-    "@types/file-type": "^10.9.3",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/moment-timezone": "^0.5.30",
     "@types/node": "^20.19.39",
     "@types/pg": "^8.20.0",
     "@types/react": "^18.3.28",
@@ -83,7 +82,6 @@
     "autoprefixer": "^10.4.27",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.15",
-    "js-yaml": "^4.1.1",
     "postcss": "^8.5.9",
     "prisma": "^7.7.0",
     "tailwindcss": "^3.4.19",
@@ -91,14 +89,25 @@
     "webpack": "^5.106.2"
   },
   "resolutions": {
-    "qs": "^6.14.1"
+    "qs": ">=6.14.1"
   },
   "overrides": {
-    "qs": "^6.14.1"
+    "qs": ">=6.14.1"
   },
   "pnpm": {
     "overrides": {
       "qs": ">=6.14.1"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@prisma/client",
+      "@prisma/engines",
+      "core-js",
+      "noblox.js",
+      "prisma",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }

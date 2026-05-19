@@ -1,11 +1,15 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { fetchworkspace, getConfig, setConfig } from '@/utils/configEngine'
+import { getConfig } from '@/utils/configEngine'
 import prisma, { role } from '@/utils/database';
-import { withSessionRoute } from '@/lib/withSession'
 import { withPermissionCheck } from '@/utils/permissionsManager'
-import { getUsername, getThumbnail, getDisplayName } from '@/utils/userinfoEngine'
-import * as noblox from 'noblox.js'
+import {
+	ALLIANCE_STRIKES_DEFAULT_MAX,
+	normalizeAllianceMaxStrikes,
+} from '@/utils/allianceStrikesConfig'
+import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
+
+type RoleOut = Omit<role, 'groupRoles'> & { groupRoles: string[] };
 
 type Data = {
 	success: boolean
@@ -15,31 +19,36 @@ type Data = {
 		groupId: number
 		groupThumbnail: string
 		groupName: string,
-		roles: role[],
+		customName: string,
+		roles: RoleOut[],
 		yourRole: string | null,
 		yourPermission: string[]
 		groupTheme: string,
 		groupDarkTheme: string,
+    lastSynced: Date | null,
+    lastSyncedSuccessful: boolean | null,
 		settings: {
 			guidesEnabled: boolean
 			leaderboardEnabled: boolean
 			sessionsEnabled: boolean
 			alliesEnabled: boolean
 			noticesEnabled: boolean
+			resignationsEnabled: boolean
 			policiesEnabled: boolean
 			widgets: string[]
+			allianceMaxStrikes: number
 		}
 	}
 }
 
-export default withPermissionCheck(handler);
+export default withAuth(handler);
 
 export async function handler(
-	req: NextApiRequest,
+	req: AuthenticatedRequest,
 	res: NextApiResponse<Data>
 ) {
 	if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })
-	if (!req.session.userid) return res.status(401).json({ success: false, error: 'Not authenticated' });
+	if (!req.auth.userId) return res.status(401).json({ success: false, error: 'Not authenticated' });
 	if (!req.query.id) return res.status(400).json({ success: false, error: 'Missing required fields' });
 
 	const workspace = await prisma.workspace.findUnique({
@@ -54,7 +63,7 @@ export async function handler(
 
 	const user = await prisma.user.findFirst({
 		where: {
-			userid: BigInt(req.session.userid)
+			userid: BigInt(req.auth.userId)
 		},
 		include: {
 			roles: {
@@ -70,11 +79,35 @@ export async function handler(
 		}
 	});
 	if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
+	if (!user.roles.length) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
 	const groupName = workspace.groupName || 'Unknown Group';
 	const groupLogo = workspace.groupLogo || '';
-	const themeconfig = await getConfig('theme', workspace.groupId);
-	const darkThemeConfig = await getConfig('darkTheme', workspace.groupId);
+	const [
+		themeconfig,
+		darkThemeConfig,
+		guidesConfig,
+		leaderboardConfig,
+		sessionsConfig,
+		alliesConfig,
+		noticesConfig,
+		resignationsConfig,
+		policiesConfig,
+		homeConfig,
+		allianceStrikesConfig,
+	] = await Promise.all([
+		getConfig('theme', workspace.groupId),
+		getConfig('darkTheme', workspace.groupId),
+		getConfig('guides', workspace.groupId),
+		getConfig('leaderboard', workspace.groupId),
+		getConfig('sessions', workspace.groupId),
+		getConfig('allies', workspace.groupId),
+		getConfig('notices', workspace.groupId),
+		getConfig('resignations', workspace.groupId),
+		getConfig('policies', workspace.groupId),
+		getConfig('home', workspace.groupId),
+		getConfig('alliance_strikes', workspace.groupId),
+	]);
 	const sessionTypes = ["shift", "training", "event", "other"];
 	const sessionPermissions: Record<string, string> = {};
 	
@@ -110,6 +143,9 @@ export async function handler(
 		"Create notices": "create_notices",
 		"Approve notices": "approve_notices",
 		"Manage notices": "manage_notices",
+		"Submit resignation": "submit_resignation",
+		"Approve resignations": "approve_resignations",
+		"Manage resignations": "manage_resignations",
 		"Create quotas": "create_quotas",
 		"Delete quotas": "delete_quotas",
 		"View member profiles": "view_member_profiles",
@@ -118,6 +154,7 @@ export async function handler(
 		"Activity adjustments": "activity_adjustments",
 		"View logbook": "view_logbook",
 		"Logbook redact": "logbook_redact",
+		"Logbook delete": "logbook_delete",
 		"Logbook note": "logbook_note",
 		"Logbook warning": "logbook_warning",
 		"Logbook promotion": "logbook_promotion",
@@ -149,19 +186,29 @@ export async function handler(
 		groupId: workspace.groupId,
 		groupThumbnail: groupLogo,
 		groupName: groupName,
+		customName: workspace.customName ?? "",
 		yourPermission: isAdmin ? Object.values(permissions) : user.roles[0].permissions,
 		groupTheme: themeconfig,
 		groupDarkTheme: darkThemeConfig,
-		roles: workspace.roles,
+		roles: workspace.roles.map((r) => ({
+			...r,
+			groupRoles: r.groupRoles.map((id) => id.toString()),
+		})),
 		yourRole: user.roles[0].id,
+    lastSynced: workspace.lastSynced,
+    lastSyncedSuccessful: workspace.lastSyncedSuccessful,
 		settings: {
-			guidesEnabled: (await getConfig('guides', workspace.groupId))?.enabled || false,
-			leaderboardEnabled: (await getConfig('leaderboard', workspace.groupId))?.enabled || false,
-			sessionsEnabled: (await getConfig('sessions', workspace.groupId))?.enabled || false,
-			alliesEnabled: (await getConfig('allies', workspace.groupId))?.enabled || false,
-			noticesEnabled: (await getConfig('notices', workspace.groupId))?.enabled || false,
-			policiesEnabled: (await getConfig('policies', workspace.groupId))?.enabled || false,
-			widgets: (await getConfig('home', workspace.groupId))?.widgets || []
+			guidesEnabled: guidesConfig?.enabled || false,
+			leaderboardEnabled: leaderboardConfig?.enabled || false,
+			sessionsEnabled: sessionsConfig?.enabled || false,
+			alliesEnabled: alliesConfig?.enabled || false,
+			noticesEnabled: noticesConfig?.enabled || false,
+			resignationsEnabled: resignationsConfig?.enabled || false,
+			policiesEnabled: policiesConfig?.enabled || false,
+			widgets: homeConfig?.widgets || [],
+			allianceMaxStrikes: normalizeAllianceMaxStrikes(
+				allianceStrikesConfig?.maxStrikes ?? ALLIANCE_STRIKES_DEFAULT_MAX,
+			),
 		}
 	} })
 }

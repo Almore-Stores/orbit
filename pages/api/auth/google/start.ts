@@ -1,17 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { withSessionRoute } from '@/lib/withSession';
+// import { withAuth } from '@/lib/withSession';
 import prisma from '@/utils/database';
 import { google } from 'googleapis';
 
-export default withSessionRoute(handler);
-
-export async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  const originUrl = req.headers.host;
-	const isLocalhost = originUrl?.includes('localhost');
 
   let clientId: string | undefined;
   let secret: string | undefined
@@ -61,7 +56,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const scopes = ['email','openid','profile'];
 
-  const oauth2 = new google.auth.OAuth2(clientId, secret, `${ isLocalhost ? "http://" : "https://" }${originUrl}/api/auth/google/callback`);
+  const oauth2 = new google.auth.OAuth2(clientId, secret, `${process.env.NEXTAUTH_URL}/api/auth/google/callback`);
 
   const authUrl = oauth2.generateAuthUrl({
     access_type: 'online',
@@ -69,7 +64,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
     include_granted_scopes: true,
     state: state,
     client_id: clientId,
-    redirect_uri: `${ isLocalhost ? "http://" : "https://" }${originUrl}/api/auth/google/callback`
+    redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/google/callback`
   });
 
   res.redirect(authUrl)

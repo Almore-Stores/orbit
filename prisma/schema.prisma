@@ -7,33 +7,35 @@ datasource db {
 }
 
 model workspace {
-  groupId           Int                        @id @unique
-  groupName         String?
-  groupLogo         String?
-  lastSynced        DateTime?
-  customName        String?
-  memberCount       Int?
-  adjustments       ActivityAdjustment[]
-  activityHistory   ActivityHistory[]
-  activityResets    ActivityReset[]
-  activitySessions  ActivitySession[]
-  allies            Ally[]
-  quotas            Quota[]
-  sessionTypes      SessionType[]
-  apiKey            apiKey[]
-  config            config[]
-  savedViews        SavedView[]
-  documents         document[]
-  inactivityNotices inactivityNotice[]
-  ranks             rank[]
-  roles             role[]
-  departments       department[]
-  userBook          userBook[]
-  wallposts         wallPost[]
-  externalServices  workspaceExternalServices?
-  members           workspaceMember[]
-  policyLinks       PolicyShareableLink[]
-  stickyAnnouncements StickyAnnouncement[]
+  groupId              Int                        @id @unique
+  groupName            String?
+  groupLogo            String?
+  lastSynced           DateTime?
+  lastSyncedSuccessful Boolean? @default(false)
+  customName           String?
+  memberCount          Int?
+  adjustments          ActivityAdjustment[]
+  activityHistory      ActivityHistory[]
+  activityResets       ActivityReset[]
+  activitySessions     ActivitySession[]
+  allies               Ally[]
+  quotas               Quota[]
+  sessionTypes         SessionType[]
+  apiKey               apiKey[]
+  config               config[]
+  savedViews           SavedView[]
+  documents            document[]
+  inactivityNotices    inactivityNotice[]
+  ranks                rank[]
+  roles                role[]
+  departments          department[]
+  userBook             userBook[]
+  wallposts            wallPost[]
+  externalServices     workspaceExternalServices?
+  members              workspaceMember[]
+  policyLinks          PolicyShareableLink[]
+  stickyAnnouncements  StickyAnnouncement[]
+  staffResignations    staffResignation[]
 }
 
 model config {
@@ -65,6 +67,7 @@ model user {
   birthdayMonth        Int?
   discordUser          DiscordUser?
   googleUser           GoogleUser?
+  authSessions         AuthSession[]
   adjustmentsMade      ActivityAdjustment[]   @relation("AdjustmentActor")
   adjustmentsReceived  ActivityAdjustment[]   @relation("AdjustmentUser")
   activityHistory      ActivityHistory[]
@@ -91,6 +94,54 @@ model user {
   roleMembers          RoleMember[]
   policyAcknowledgments PolicyAcknowledgment[]
   createdPolicyLinks   PolicyShareableLink[]
+  staffResignations    staffResignation[]
+  resignationsReviewed staffResignation[]      @relation("ResignationReviewer")
+  quotaCustomCompletions QuotaCustomCompletion[] @relation("QuotaCompletionUser")
+  quotaCompletionsReviewed QuotaCustomCompletion[] @relation("QuotaCompletionReviewer")
+}
+
+model AuthSession {
+  id        String   @id @unique @default(uuid()) @db.Uuid
+  userId    BigInt
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  browser   String?
+  os        String?
+  device    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      user     @relation(fields: [userId], references: [userid])
+}
+
+model OAuthState {
+  id         String   @id @default(cuid())
+  state      String   @unique
+  userId     BigInt?  
+  provider   String   @default("roblox")
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  @@index([state])
+  @@index([expiresAt])
+}
+
+model ValidationState {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  userId     BigInt
+  createdAt  DateTime @default(now())
+  @@index([code])
+}
+
+model pendingVerification {
+  token            String   @id @unique @default(uuid()) @db.Uuid
+  userid           Int
+  verificationCode String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 model DiscordUser {
@@ -328,6 +379,7 @@ model ActivitySession {
   idleTime         BigInt?
   workspaceGroupId Int
   messages         Int?
+  chatLog          Json?
   universeId       BigInt?
   sessionMessage   String?
   archived         Boolean?  @default(false)
@@ -363,6 +415,26 @@ model inactivityNotice {
   reviewComment    String?
   user             user      @relation(fields: [userId], references: [userid])
   workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])
+}
+
+model staffResignation {
+  id               String    @id @unique @default(uuid()) @db.Uuid
+  userId           BigInt
+  workspaceGroupId Int
+  lastWorkingDay   DateTime
+  reason           String
+  approved         Boolean?  @default(false)
+  reviewed         Boolean?  @default(false)
+  reviewComment    String?
+  reviewerId       BigInt?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             user      @relation(fields: [userId], references: [userid])
+  workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])
+  reviewer         user?     @relation("ResignationReviewer", fields: [reviewerId], references: [userid])
+
+  @@index([workspaceGroupId])
+  @@index([userId])
 }
 
 model document {
@@ -429,20 +501,40 @@ model Quota {
   workspace        workspace         @relation(fields: [workspaceGroupId], references: [groupId])
   quotaRoles       QuotaRole[]
   quotaDepartments QuotaDepartment[]
+  customCompletions QuotaCustomCompletion[]
+}
+
+model QuotaCustomCompletion {
+  id                 String    @id @default(uuid()) @db.Uuid
+  quotaId            String    @db.Uuid
+  userId             BigInt
+  status             String
+  submittedAt        DateTime  @default(now())
+  reviewedAt         DateTime?
+  reviewedByUserId   BigInt?
+  quota              Quota     @relation(fields: [quotaId], references: [id], onDelete: Cascade)
+  user               user      @relation("QuotaCompletionUser", fields: [userId], references: [userid], onDelete: Cascade)
+  reviewedBy         user?     @relation("QuotaCompletionReviewer", fields: [reviewedByUserId], references: [userid], onDelete: SetNull)
+
+  @@unique([quotaId, userId])
+  @@index([quotaId, status])
 }
 
 model Ally {
-  workspaceGroupId Int
-  name             String
-  icon             String
-  groupId          String
-  notes            String[]
-  discordServer    String?
-  theirReps        String[]
-  id               String      @id @unique @default(uuid()) @db.Uuid
-  workspace        workspace   @relation(fields: [workspaceGroupId], references: [groupId])
-  allyVisits       allyVisit[]
-  reps             user[]      @relation("AllyTouser")
+  workspaceGroupId           Int
+  name                       String
+  icon                       String
+  groupId                    String
+  notes                      String[]
+  discordServer              String?
+  theirReps                  String[]
+  strikes                    Int         @default(0)
+  terminationEffectiveDate   DateTime?
+  terminationReason          String?
+  id                         String      @id @unique @default(uuid()) @db.Uuid
+  workspace                  workspace   @relation(fields: [workspaceGroupId], references: [groupId])
+  allyVisits                 allyVisit[]
+  reps                       user[]      @relation("AllyTouser")
 }
 
 model allyVisit {
@@ -541,6 +633,7 @@ model workspaceExternalServices {
   rankingProvider  String?
   rankingToken     String?
   rankingWorkspaceId String?
+  rankingMaxRank   Int?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])

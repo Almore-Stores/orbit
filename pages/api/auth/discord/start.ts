@@ -1,15 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { withSessionRoute } from '@/lib/withSession';
+// import { withAuth } from '@/lib/withSession';
 import prisma from '@/utils/database';
+import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
 
-export default withSessionRoute(handler);
-
-export async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 	if (req.method !== 'GET') {
 		return res.status(405).json({ error: 'Method not allowed' });
 	}
-
-	const originUrl = req.headers.host
 
 	let clientId: string | undefined;
 	clientId = process.env.DISCORD_APPLICATION_ID;
@@ -36,12 +33,17 @@ export async function handler(req: NextApiRequest, res: NextApiResponse) {
 	}
 
 	const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-	req.session.oauthState = state;
-	await req.session.save();
+	await prisma.oAuthState.create({
+    data: {
+      state,
+      provider: 'discord',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min
+    },
+  });
 
 	const authUrl = new URL('https://discord.com/oauth2/authorize');
 	authUrl.searchParams.set('client_id', clientId);
-	authUrl.searchParams.set('redirect_uri', `${originUrl?.includes('localhost') ? "http://" : "https://" }${originUrl}/api/auth/discord/callback`);
+	authUrl.searchParams.set('redirect_uri', `${process.env.NEXTAUTH_URL}/api/auth/discord/callback`);
 	authUrl.searchParams.set('scope', 'identify');
 	authUrl.searchParams.set('response_type', 'code');
 	authUrl.searchParams.set('state', state);

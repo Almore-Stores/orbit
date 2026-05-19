@@ -33,8 +33,6 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import clsx from "clsx";
-import { Toaster } from "react-hot-toast";
-import { motion } from "framer-motion";
 import axios from "axios";
 import toast from "react-hot-toast";
 import PolicyLinkManager from "@/components/PolicyLinkManager";
@@ -72,7 +70,7 @@ function getRandomBg(userid: string, username?: string) {
 export const getServerSideProps = withPermissionCheckSsr(
   async (context: any) => {
     const { id } = context.query;
-    const userid = context.req.session.userid;
+    const userid = context.req.auth.userId;
     if (!userid) {
       return {
         redirect: {
@@ -308,7 +306,7 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
   const [selectedDocumentForLink, setSelectedDocumentForLink] =
     useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [policyToDelete, setPolicyToDelete] = useState<{id: string, name: string} | null>(null);
+  const [policyToDelete, setPolicyToDelete] = useState<{ id: string, name: string } | null>(null);
   const [policyMode, setPolicyMode] = useState<"internal" | "external">(
     "internal"
   );
@@ -379,8 +377,6 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
           `/api/workspace/${router.query.id}/policies/compliance-stats`
         );
         if (response.data.success) {
-          const roleCounts: { [roleId: string]: number } = {};
-          response.data.stats.memberCompliance.forEach((member: any) => {});
           const policyRequiredCounts: { [policyId: string]: number } = {};
           response.data.stats.policyBreakdown.forEach((policy: any) => {
             policyRequiredCounts[policy.id] = policy.totalRequired;
@@ -398,8 +394,8 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
       fetchRoleCounts();
     }
   }, [router.query.id]);
-  const canViewPolicyManagement = 
-    ["create_policies", "edit_policies", "delete_policies", "view_compliance", "admin"].some(perm => 
+  const canViewPolicyManagement =
+    ["create_policies", "edit_policies", "delete_policies", "view_compliance", "admin"].some(perm =>
       workspace.yourPermission?.includes(perm)
     );
 
@@ -445,9 +441,9 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
         content:
           policyMode === "external"
             ? {
-                external: true,
-                url: newPolicy.externalUrl.trim(),
-              }
+              external: true,
+              url: newPolicy.externalUrl.trim(),
+            }
             : newPolicy.content,
       };
       await axios.post(
@@ -511,8 +507,8 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
       content: isExternal
         ? ""
         : typeof document.content === "string"
-        ? document.content
-        : JSON.stringify(document.content, null, 2),
+          ? document.content
+          : JSON.stringify(document.content, null, 2),
       externalUrl: isExternal ? document.content.url : "",
       requiresAcknowledgment: document.requiresAcknowledgment,
       acknowledgmentDeadline: document.acknowledgmentDeadline
@@ -573,6 +569,7 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
         isTrainingDocument: editPolicy.isTrainingDocument,
         assignToEveryone: editPolicy.assignToEveryone,
         roles: editPolicy.assignToEveryone ? [] : editPolicy.roles,
+        departments: editPolicy.departments
       };
 
       await axios.put(
@@ -646,27 +643,26 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
   };
 
   const calculatePolicyStats = (doc: any) => {
-    const currentVersionAcks = doc.acknowledgments;
-    const totalRequired = memberRoleCounts[doc.id] || 0;
-    const acknowledged = currentVersionAcks.length;
+    const totalRequired = memberRoleCounts[doc.id] ?? 0;
+    const acknowledged = doc.acknowledgments.length;
     const complianceRate =
-      totalRequired > 0 ? (acknowledged / totalRequired) * 100 : 100;
+      totalRequired > 0
+        ? Math.min((acknowledged / totalRequired) * 100, 100)
+        : acknowledged > 0
+          ? 100
+          : 0;
 
     return { acknowledged, totalRequired, complianceRate };
   };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-      <Toaster position="bottom-center" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-medium text-zinc-900 dark:text-white">
               Policies
             </h1>
-            <span className="px-2 py-1 text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full">
-              BETA
-            </span>
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
             {viewMode === "user"
@@ -819,7 +815,7 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                   (doc) =>
                                     doc.acknowledgmentDeadline &&
                                     new Date() >
-                                      new Date(doc.acknowledgmentDeadline)
+                                    new Date(doc.acknowledgmentDeadline)
                                 ).length
                               }
                             </p>
@@ -834,7 +830,7 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                         const isOverdue =
                           document.acknowledgmentDeadline &&
                           new Date() >
-                            new Date(document.acknowledgmentDeadline);
+                          new Date(document.acknowledgmentDeadline);
 
                         return (
                           <div
@@ -867,9 +863,9 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                       {(document as any).assignToEveryone
                                         ? "Everyone"
                                         : [
-                                            ...document.roles.map((r: any) => r.name),
-                                            ...(document.departments || []).map((d: any) => d.name)
-                                          ].join(", ") || "No assignments"}
+                                          ...document.roles.map((r: any) => r.name),
+                                          ...(document.departments || []).map((d: any) => d.name)
+                                        ].join(", ") || "No assignments"}
                                     </span>
                                     {document.acknowledgmentDeadline && (
                                       <>
@@ -892,8 +888,8 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                             stats.complianceRate === 100
                                               ? "bg-green-500"
                                               : stats.complianceRate >= 75
-                                              ? "bg-yellow-500"
-                                              : "bg-red-500"
+                                                ? "bg-yellow-500"
+                                                : "bg-red-500"
                                           )}
                                           style={{
                                             width: `${stats.complianceRate}%`,
@@ -1088,8 +1084,8 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                             policy.complianceRate === 100
                                               ? "bg-green-500"
                                               : policy.complianceRate >= 75
-                                              ? "bg-yellow-500"
-                                              : "bg-red-500"
+                                                ? "bg-yellow-500"
+                                                : "bg-red-500"
                                           )}
                                           style={{
                                             width: `${policy.complianceRate}%`,
@@ -1229,8 +1225,8 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                               currentStep > step
                                 ? "bg-green-500 border-green-500 text-white shadow-sm"
                                 : currentStep === step
-                                ? "bg-primary border-primary text-white shadow-lg"
-                                : "bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500"
+                                  ? "bg-primary border-primary text-white shadow-lg"
+                                  : "bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500"
                             )}
                           >
                             {currentStep > step ? (
@@ -1561,29 +1557,29 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                               </div>
                               {newPolicy.acknowledgmentMethod ===
                                 "type_word" && (
-                                <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                    Confirmation Word/Phrase *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g., UNDERSTOOD, AGREE, or a custom phrase"
-                                    value={newPolicy.acknowledgmentWord}
-                                    onChange={(e) =>
-                                      setNewPolicy({
-                                        ...newPolicy,
-                                        acknowledgmentWord: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                                    required
-                                  />
-                                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                                    Users must type this exact word/phrase to
-                                    acknowledge the policy.
-                                  </p>
-                                </div>
-                              )}
+                                  <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                      Confirmation Word/Phrase *
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g., UNDERSTOOD, AGREE, or a custom phrase"
+                                      value={newPolicy.acknowledgmentWord}
+                                      onChange={(e) =>
+                                        setNewPolicy({
+                                          ...newPolicy,
+                                          acknowledgmentWord: e.target.value,
+                                        })
+                                      }
+                                      className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                                      required
+                                    />
+                                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                      Users must type this exact word/phrase to
+                                      acknowledge the policy.
+                                    </p>
+                                  </div>
+                                )}
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -1708,19 +1704,21 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                         type="checkbox"
                                         checked={newPolicy.departments.includes(department.id)}
                                         onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setNewPolicy({
-                                              ...newPolicy,
-                                              departments: [...newPolicy.departments, department.id],
-                                            });
-                                          } else {
-                                            setNewPolicy({
-                                              ...newPolicy,
-                                              departments: newPolicy.departments.filter(
-                                                (d) => d !== department.id
-                                              ),
-                                            });
-                                          }
+                                          setNewPolicy((prev: any) => {
+                                            if (e.target.checked) {
+                                              return {
+                                                ...prev,
+                                                departments: [...prev.departments, department.id],
+                                              };
+                                            } else {
+                                              return {
+                                                ...prev,
+                                                departments: prev.departments.filter(
+                                                  (d: any) => d !== department.id
+                                                ),
+                                              };
+                                            }
+                                          });
                                         }}
                                         className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary/50"
                                       />
@@ -1803,15 +1801,15 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                 <p>
                                   <strong>Method:</strong>{" "}
                                   {newPolicy.acknowledgmentMethod ===
-                                  "signature"
+                                    "signature"
                                     ? "Digital Signature"
                                     : newPolicy.acknowledgmentMethod ===
                                       "type_username"
-                                    ? "Type Username"
-                                    : newPolicy.acknowledgmentMethod ===
-                                      "type_word"
-                                    ? "Type Word to Confirm"
-                                    : "Simple Checkbox"}
+                                      ? "Type Username"
+                                      : newPolicy.acknowledgmentMethod ===
+                                        "type_word"
+                                        ? "Type Word to Confirm"
+                                        : "Simple Checkbox"}
                                 </p>
                                 {newPolicy.acknowledgmentMethod ===
                                   "type_word" &&
@@ -1994,8 +1992,8 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                               currentStep > step
                                 ? "bg-green-500 border-green-500 text-white shadow-sm"
                                 : currentStep === step
-                                ? "bg-primary border-primary text-white shadow-lg"
-                                : "bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500"
+                                  ? "bg-primary border-primary text-white shadow-lg"
+                                  : "bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500"
                             )}
                           >
                             {currentStep > step ? (
@@ -2288,25 +2286,25 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
 
                             {editPolicy.acknowledgmentMethod ===
                               "type_word" && (
-                              <div className="mb-6">
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                  Required Word *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editPolicy.acknowledgmentWord}
-                                  onChange={(e) =>
-                                    setEditPolicy({
-                                      ...editPolicy,
-                                      acknowledgmentWord: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Enter word users must type"
-                                  disabled={!hasEditPermission}
-                                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                              </div>
-                            )}
+                                <div className="mb-6">
+                                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                    Required Word *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editPolicy.acknowledgmentWord}
+                                    onChange={(e) =>
+                                      setEditPolicy({
+                                        ...editPolicy,
+                                        acknowledgmentWord: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Enter word users must type"
+                                    disabled={!hasEditPermission}
+                                    className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                  />
+                                </div>
+                              )}
 
                             <div className="mb-6">
                               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -2448,19 +2446,21 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                         type="checkbox"
                                         checked={editPolicy.departments.includes(department.id)}
                                         onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setEditPolicy({
-                                              ...editPolicy,
-                                              departments: [...editPolicy.departments, department.id],
-                                            });
-                                          } else {
-                                            setEditPolicy({
-                                              ...editPolicy,
-                                              departments: editPolicy.departments.filter(
-                                                (d) => d !== department.id
-                                              ),
-                                            });
-                                          }
+                                          setEditPolicy((prev: any) => {
+                                            if (e.target.checked) {
+                                              return {
+                                                ...prev,
+                                                departments: [...prev.departments, department.id],
+                                              };
+                                            } else {
+                                              return {
+                                                ...prev,
+                                                departments: prev.departments.filter(
+                                                  (d: any) => d !== department.id
+                                                ),
+                                              };
+                                            }
+                                          });
                                         }}
                                         disabled={!hasEditPermission}
                                         className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2769,9 +2769,11 @@ const PoliciesPage: pageWithLayout<pageProps> = ({
                                   </div>
                                 )}
                                 <div>
-                                  <div className="text-sm font-medium text-zinc-900 dark:text-white">
-                                    {user.username || `User ${user.userid}`}
-                                  </div>
+                                  <a href={`/workspace/${workspace.groupId}/profile/${user.userid}`}>
+                                    <div className="text-sm font-medium text-zinc-900 dark:text-white hover:text-blue-500 dark:hover:text-blue-600 transition-colors">
+                                      {user.username || `User ${user.userid}`}
+                                    </div>
+                                  </a>
                                   {user.status === "acknowledged" &&
                                     user.acknowledgedAt && (
                                       <div className="text-xs text-zinc-500 dark:text-zinc-400">

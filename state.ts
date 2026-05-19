@@ -1,12 +1,20 @@
-import { atom, selector } from "recoil";
-import Router from "next/router";
+import { atom, RecoilState, AtomOptions } from "recoil";
 import { role } from "@prisma/client";
-import axios from "axios";
+import { ALLIANCE_STRIKES_DEFAULT_MAX } from "@/utils/allianceStrikesConfig";
+
+const g = global as any;
+if (!g.__recoilAtoms) g.__recoilAtoms = {};
+function stableAtom<T>(options: AtomOptions<T>): RecoilState<T> {
+	if (!g.__recoilAtoms[options.key]) {
+		g.__recoilAtoms[options.key] = atom<T>(options);
+	}
+	return g.__recoilAtoms[options.key];
+}
 export type workspaceinfo = {
 	groupId: number;
 	groupThumbnail: string;
 	groupName: string;
-  customName: string;
+	customName: string;
 }
 
 export type LoginState = {
@@ -17,41 +25,41 @@ export type LoginState = {
 	canMakeWorkspace: boolean;
 	workspaces: workspaceinfo[];
 	isOwner: boolean;
-  isFirstLogin: boolean,
+	isFirstLogin: boolean,
 	discordUser?: {
 		discordUserId: string
 		username: string
 		avatar: string | null
 	} | null,
-  googleUser?: {
-    username: string,
-    avatar: string | null,
-    email: string | null  // add | null
-  } | null
+	googleUser?: {
+		username: string,
+		avatar: string | null,
+		email: string | null
+	} | null
 }
 
-const loginState = atom<LoginState>({
+const loginState = stableAtom<LoginState>({
 	key: "loginState",
 	default: {
 		userId: 1,
 		username: '',
 		displayname: '',
 		thumbnail: '',
-    isFirstLogin: true,
+		isFirstLogin: true,
 		canMakeWorkspace: false,
 		workspaces: [] as workspaceinfo[],
 		isOwner: false,
 		discordUser: null,
-    googleUser: null
+		googleUser: null
 	},
 });
 
-const workspacestate = atom({
+const workspacestate = stableAtom({
 	key: "workspacestate",
 	default: {
 		groupId: typeof window !== 'undefined' ? parseInt(window.location.pathname.split('/')[2]) || 1 : 1,
 		groupThumbnail: '',
-    customName: '',
+		customName: '',
 		groupName: '',
 		yourPermission: [] as string[],
 		isAdmin: false,
@@ -59,17 +67,21 @@ const workspacestate = atom({
 		groupDarkTheme: '',
 		roles: [] as role[],
 		yourRole: '',
+		lastSynced: new Date(),
+		lastSyncedSuccessful: true,
 		settings: {
 			guidesEnabled: false,
 			sessionsEnabled: false,
 			alliesEnabled: false,
 			noticesEnabled: false,
+			resignationsEnabled: false,
 			leaderboardEnabled: false,
 			policiesEnabled: false,
-			widgets: [] as string[]
+			widgets: [] as string[],
+			allianceMaxStrikes: ALLIANCE_STRIKES_DEFAULT_MAX,
 		}
 	}
 });
 
 
-export {loginState, workspacestate};
+export { loginState, workspacestate };

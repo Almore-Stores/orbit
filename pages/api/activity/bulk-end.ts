@@ -1,7 +1,7 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextApiResponse } from "next";
 import prisma from "@/utils/database";
-import { withSessionRoute } from "@/lib/withSession";
+import { deriveActivityEndChatFields } from "@/utils/activitySessionChat";
+import { NextApiRequest } from "next/types";
 
 type Data = {
   success: boolean;
@@ -10,9 +10,7 @@ type Data = {
   failed?: number;
 };
 
-export default withSessionRoute(handler);
-
-export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
   if (req.method !== "POST") {
     return res
       .status(405)
@@ -51,7 +49,7 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
     let failed = 0;
     const updates = sessions.map(async (sessionData: any) => {
       try {
-        const { userid, idleTime, messages } = sessionData;
+        const { userid, idleTime } = sessionData;
 
         if (!userid || isNaN(userid)) {
           failed++;
@@ -71,13 +69,17 @@ export async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
           return;
         }
 
+        const { messages: messagesCount, chatLog } =
+          deriveActivityEndChatFields(sessionData as Record<string, unknown>);
+
         await prisma.activitySession.update({
           where: { id: session.id },
           data: {
             endTime: new Date(),
             active: false,
             idleTime: idleTime ? Number(idleTime) : 0,
-            messages: messages ? Number(messages) : 0,
+            messages: messagesCount,
+            ...(chatLog !== undefined ? { chatLog } : {}),
           },
         });
 
