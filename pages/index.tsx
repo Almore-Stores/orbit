@@ -439,23 +439,9 @@ const Home: NextPage = () => {
       } else {
         router.push("/404");
       }
-      return;
-    }
-
-    const ALMORE_DEFAULT_GROUP_ID = 16109128;
-    if (login.workspaces?.length) {
-      const hasAccess = login.workspaces.some(
-        (w) => w.groupId === ALMORE_DEFAULT_GROUP_ID,
-      );
-      if (hasAccess) {
-        gotoWorkspace(ALMORE_DEFAULT_GROUP_ID);
-      } else {
-        router.push("/404");
-      }
     }
   }, [
     workspaces,
-    login.workspaces,
     externalConfig.redirect_wid,
     showInstanceSettings,
     configLoading,
