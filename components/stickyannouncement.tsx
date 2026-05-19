@@ -184,8 +184,13 @@ export default function StickyNoteAnnouncement() {
   return (
     <div className="z-0 bg-white dark:bg-zinc-900/70 rounded-2xl shadow-[0_1px_3px_0_rgb(0,0,0,0.06),0_1px_2px_-1px_rgb(0,0,0,0.04)] dark:shadow-zinc-950/30 p-4 flex items-start space-x-4 mb-6 relative">
       <img
+<<<<<<< HEAD
         src={workspace?.groupThumbnail || "/favicon.png"}
         alt={workspace?.groupName || "Planetary"}
+=======
+        src={"/alex.png"}
+        alt={"Alex"}
+>>>>>>> 73cf360551765df68ea8c2a78d075c444510a4d6
         className="w-10 h-10 rounded-full object-cover bg-zinc-100 dark:bg-zinc-800 flex-shrink-0"
       />
       <div className="flex-1">

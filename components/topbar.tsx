@@ -132,12 +132,27 @@ const Topbar: NextPage = () => {
   const initials = login?.displayname
     ?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
+<<<<<<< HEAD
   return (
     <>
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <img src="/almore.svg" className="h-8 w-32" alt="Almore logo" />
+=======
+	return (
+		<>
+			<header className="sticky top-0 z-50 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-zinc-700">
+				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div className="flex justify-between items-center h-16">
+						<div className="flex items-center space-x-4">
+							<img
+								src='/almore.svg'
+								className="h-8 w-32"
+								alt="Almore logo"
+							/>
+						</div>
+>>>>>>> 73cf360551765df68ea8c2a78d075c444510a4d6
 
             <button
               onClick={handleOpen}
