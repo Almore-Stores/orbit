@@ -3,6 +3,13 @@ const webpack = require('webpack');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
+  },
+  typescript: {
+    ignoreBuildErrors: true, // if you wanna test build do [p]npm run typecheck
+  },
   images: {
     remotePatterns: [
       {
