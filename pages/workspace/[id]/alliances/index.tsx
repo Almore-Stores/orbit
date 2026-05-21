@@ -137,16 +137,6 @@ const Allies: pageWithLayout<pageProps> = (props) => {
   };
 
   const [reps, setReps] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const allies: any = props.infoAllies;
-  const users: any = props.infoUsers;
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((user: any) =>
-      user.username?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [users, searchQuery]);
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = event.target;
@@ -252,6 +242,9 @@ const Allies: pageWithLayout<pageProps> = (props) => {
   const getRandomColor = () => {
     return colors[Math.floor(Math.random() * colors.length)];
   };
+
+  const allies: any = props.infoAllies;
+  const users: any = props.infoUsers;
 
   return (
     <>
@@ -477,24 +470,12 @@ const Allies: pageWithLayout<pageProps> = (props) => {
                                           className="h-full w-full object-cover"
                                           alt={user.username}
                                         />
-                                        <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center ${getRandomBg(
-                                            user.userid
-                                          )} overflow-hidden`}
-                                        >
-                                          <img
-                                            src={user.thumbnail}
-                                            className="w-full h-full object-cover"
-                                            alt={user.username}
-                                            style={{ background: "transparent" }}
-                                          />
-                                        </div>
-                                        <span className="text-sm text-zinc-900 dark:text-white">
-                                          {user.username}
-                                        </span>
-                                      </label>
-                                    ))
-                                  )}
+                                      </div>
+                                      <span className="text-sm text-zinc-900 dark:text-white">
+                                        {user.username}
+                                      </span>
+                                    </label>
+                                  ))}
                                 </div>
                               </>
                             )}
