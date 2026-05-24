@@ -1,14 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import prisma from "@/utils/database";
-import { validateApiKey } from "@/utils/api-auth";
+import { withAuth } from "@/lib/withAuth";
 
-export default async function handler(
+export default withAuth(handler);
+
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const apiKey = req.headers.authorization?.replace("Bearer ", "");
-  if (!apiKey)
-    return res.status(401).json({ success: false, error: "Missing API key" });
 
   const workspaceId = Number.parseInt(req.query.id as string);
   const sessionId = req.query.sid as string;
@@ -23,10 +22,6 @@ export default async function handler(
       .json({ success: false, error: "Missing session ID" });
 
   try {
-    const key = await validateApiKey(apiKey, workspaceId.toString());
-    if (!key) {
-      return res.status(401).json({ success: false, error: "Invalid API key" });
-    }
     const session = await prisma.session.findFirst({
       where: {
         id: sessionId,
@@ -56,6 +51,7 @@ export default async function handler(
               picture: true,
             },
           },
+          notes: true,
           sessionType: {
             select: {
               id: true,
@@ -83,6 +79,8 @@ export default async function handler(
         date: sessionWithDetails!.date,
         startedAt: sessionWithDetails!.startedAt,
         ended: sessionWithDetails!.ended,
+        cancelled: sessionWithDetails!.cancelled,
+        cancellationReason: sessionWithDetails!.cancellationReason,
         type: {
           id: sessionWithDetails!.sessionType.id,
           name: sessionWithDetails!.sessionType.name,
@@ -112,6 +110,13 @@ export default async function handler(
           : sessionWithDetails!.date < new Date()
           ? "missed"
           : "scheduled",
+        notes: sessionWithDetails!.notes.map((note) => ({
+          id: note.id,
+          authorId: note.authorId,
+          content: note.content,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+        })),
       };
 
       return res.status(200).json({

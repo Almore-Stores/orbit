@@ -12,9 +12,24 @@ function isPublic(pathname: string) {
   return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 }
 
-function internalUrl(path: string): string {
-  const base = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}${path}`;
+function internalUrl(request: NextRequest, path: string): string {
+  if (process.env.PLANETARY_CLOUD_URL) {
+    const base = process.env.NEXTAUTH_URL || "http://localhost:3000"; // idk seem to work on cloud instances
+    return `${base}${path}`;
+  }
+  
+  if (process.env.NEXTAUTH_URL) {
+    const base = process.env.NEXTAUTH_URL.replace(/\/$/, "");
+    return `${base}${path}`;
+  }
+  
+  const host = request.headers.get("host") || "";
+  if (host.includes("localhost") || host.includes("127.0.0.1")) {
+    return `http://${host}${path}`;
+  }
+  
+  const { protocol, host: reqHost } = request.nextUrl;
+  return `${protocol}//${reqHost}${path}`;
 }
 
 function getMissingEnvVars(): string[] {
@@ -27,17 +42,25 @@ let setupCache: {
 } | null = null;
 const CACHE_DURATION = 30000; // 30 seconds
 
-async function checkSetup(): Promise<boolean> {
+async function checkSetup(request: NextRequest): Promise<boolean> {
   if (setupCache && Date.now() - setupCache.timestamp < CACHE_DURATION) {
     return setupCache.isSetup;
   }
 
   try {
-    const res = await fetch(internalUrl("/api/admin/first-setup/config"));
+    const url = internalUrl(request, "/api/admin/first-setup/config");
+    console.log(`[Middleware] Checking setup at: ${url}`);
+    
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (res.ok) {
       const data = await res.json();
-      const isSetup = data.workspaceCount > 0 || data.userCount > 0;
+      const isSetup = data.userCount > 0;
 
       setupCache = {
         isSetup,
@@ -45,6 +68,8 @@ async function checkSetup(): Promise<boolean> {
       };
 
       return isSetup;
+    } else {
+      console.log(`[Middleware] Setup check failed with status: ${res.status}`);
     }
   } catch (error) {
     console.error("[Middleware] Failed to check setup:", error);
@@ -55,6 +80,7 @@ async function checkSetup(): Promise<boolean> {
 
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
@@ -75,14 +101,14 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isActuallySetup = await checkSetup();
-
+  const isActuallySetup = await checkSetup(request);
   const appSetupCookie = request.cookies.get("app_setup")?.value;
   const cookieIsSetup = appSetupCookie === "true";
 
   const needsCookieUpdate = cookieIsSetup !== isActuallySetup;
 
   if (!isActuallySetup && pathname !== "/welcome") {
+    console.log(`[Middleware] Not setup, redirecting ${pathname} -> /welcome`);
     const res = NextResponse.redirect(new URL("/welcome", request.url));
     res.cookies.set("app_setup", "false", {
       path: "/",
@@ -93,6 +119,7 @@ export default async function middleware(request: NextRequest) {
   }
 
   if (isActuallySetup && pathname === "/welcome") {
+    console.log(`[Middleware] Setup complete, redirecting /welcome -> /`);
     const res = NextResponse.redirect(new URL("/", request.url));
     res.cookies.set("app_setup", "true", {
       path: "/",
@@ -101,10 +128,10 @@ export default async function middleware(request: NextRequest) {
     });
     return res;
   }
-
   if (isActuallySetup && !isPublic(pathname)) {
     const token = request.cookies.get("session_token")?.value;
     if (!token) {
+      console.log(`[Middleware] No session token, redirecting ${pathname} -> /login`);
       const res = NextResponse.redirect(new URL("/login", request.url));
       res.cookies.set("app_setup", "true", {
         path: "/",
@@ -115,8 +142,13 @@ export default async function middleware(request: NextRequest) {
     }
 
     try {
-      const res = await fetch(internalUrl("/api/auth/session/validate"), {
-        headers: { Authorization: `Bearer ${token}` },
+      const url = internalUrl(request, "/api/auth/session/validate");
+      
+      const res = await fetch(url, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!res.ok) {
@@ -143,6 +175,7 @@ export default async function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
   if (needsCookieUpdate) {
+    console.log(`[Middleware] Updating app_setup cookie: ${cookieIsSetup} -> ${isActuallySetup}`);
     response.cookies.set("app_setup", String(isActuallySetup), {
       path: "/",
       httpOnly: true,
@@ -154,12 +187,11 @@ export default async function middleware(request: NextRequest) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://widget.intercom.io https://js.intercomcdn.com https://cdn.posthog.com https://js.posthog.com https://cdn.intercom.com https://uploads.intercombcdn.com https://uranus.planetaryapp.cloud",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.posthog.com https://js.posthog.com https://uranus.planetaryapp.cloud",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com https://fonts.intercomcdn.com",
+      "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https: blob:",
       "connect-src 'self' https: wss:",
-      "frame-src 'self' https://widget.intercom.io",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",

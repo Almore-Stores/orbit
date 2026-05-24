@@ -5,13 +5,15 @@ import { UAParser } from 'ua-parser-js'
 const SESSION_SECRET = process.env.SESSION_SECRET!
 
 function generateToken(): string {
-  return crypto.randomBytes(32).toString('hex')
+  const token = crypto.randomBytes(32).toString('hex')
+  return `DONOTSHARE_${token}`
 }
 
 function hashToken(token: string): string {
+  const cleanToken = token.replace(/^DONOTSHARE_/i, '')
   return crypto
     .createHash('sha256')
-    .update(token)
+    .update(cleanToken)
     .digest('hex')
 }
 
@@ -49,23 +51,29 @@ function encrypt(value?: string | null): string | null {
 
 function decrypt(value?: string | null): string | null {
   if (!value) return null
+  const parts = value.split(':')
+  if (parts.length !== 3) return value
 
-  const [ivHex, tagHex, encryptedHex] = value.split(':')
+  const [ivHex, tagHex, encryptedHex] = parts
 
-  const decipher = crypto.createDecipheriv(
-    'aes-256-gcm',
-    getKey(),
-    Buffer.from(ivHex, 'hex')
-  )
+  try {
+    const decipher = crypto.createDecipheriv(
+      'aes-256-gcm',
+      getKey(),
+      Buffer.from(ivHex, 'hex')
+    )
 
-  decipher.setAuthTag(Buffer.from(tagHex, 'hex'))
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'))
 
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(encryptedHex, 'hex')),
-    decipher.final(),
-  ])
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(encryptedHex, 'hex')),
+      decipher.final(),
+    ])
 
-  return decrypted.toString('utf8')
+    return decrypted.toString('utf8')
+  } catch {
+    return null
+  }
 }
 
 function parseUA(userAgent?: string) {
@@ -131,6 +139,9 @@ async function createSession(
 }
 
 async function getSessionByToken(token: string) {
+  const isValidDontShare = /^DONOTSHARE_[a-f0-9]{64}$/i.test(token)
+  if (!isValidDontShare) return null
+
   const hashedToken = hashToken(token)
 
   const session = await prisma.authSession.findUnique({
@@ -159,13 +170,16 @@ async function getSessionByToken(token: string) {
 
   return {
     ...session,
-
+    token: token,
     ipAddress: decrypt(session.ipAddress),
     userAgent: decrypt(session.userAgent),
   }
 }
 
 async function refreshSession(token: string, days = 30) {
+  const isValidDontShare = /^DONOTSHARE_[a-f0-9]{64}$/i.test(token)
+  if (!isValidDontShare) throw new Error('Invalid token format')
+
   return prisma.authSession.update({
     where: {
       token: hashToken(token),
@@ -180,6 +194,9 @@ async function refreshSession(token: string, days = 30) {
 }
 
 async function rotateSessionToken(token: string) {
+  const isValidDontShare = /^DONOTSHARE_[a-f0-9]{64}$/i.test(token)
+  if (!isValidDontShare) throw new Error('Invalid token format')
+
   const newToken = generateToken()
 
   const session = await prisma.authSession.update({
@@ -200,6 +217,9 @@ async function rotateSessionToken(token: string) {
 }
 
 async function deleteSession(token: string) {
+  const isValidDontShare = /^DONOTSHARE_[a-f0-9]{64}$/i.test(token)
+  if (!isValidDontShare) return null
+
   return prisma.authSession
     .delete({
       where: {
@@ -209,27 +229,22 @@ async function deleteSession(token: string) {
     .catch(() => null)
 }
 
-async function deleteAllUserSessions(userId: bigint, token: string) {
+async function deleteAllUserSessions(userId: bigint) {
   return prisma.authSession.deleteMany({
-    where: {
-      userId,
-      token: {
-        not: hashToken(token)
-      }
-    },
+    where: { userId },
   })
 }
 
 async function deleteOtherSessions(
   userId: bigint,
-  currentToken: string
+  sid: string
 ) {
+
   return prisma.authSession.deleteMany({
     where: {
       userId,
-
       NOT: {
-        token: hashToken(currentToken),
+        id: sid,
       },
     },
   })
@@ -240,9 +255,14 @@ async function listActiveSessions(userId: bigint) {
     where: { userId, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
     select: {
-      id: true, token: true, browser: true, os: true,
-      device: true, ipAddress: true, userAgent: true,
-      createdAt: true, expiresAt: true, 
+      id: true,
+      browser: true,
+      os: true,
+      device: true,
+      ipAddress: true,
+      userAgent: true,
+      createdAt: true,
+      expiresAt: true,
     },
   })
 
