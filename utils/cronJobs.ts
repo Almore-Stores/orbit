@@ -1,58 +1,40 @@
 import cron from 'node-cron'
 import axios from 'axios'
 
+function getInternalBaseUrl(): string {
+  if (process.env.PLANETARY_CLOUD_URL) {
+    return (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
+  }
+
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, "");
+  }
+
+  return "http://localhost:3000";
+}
+
 export async function initCronJobs() {
-  if (!process.env.CRON_SECRET) {
-    console.log("Cron processes will not run through because of CRON_SECRET not being set on environmental variables.")
-    return;
-  }
-  if (!process.env.NEXTAUTH_URL) {
-    console.log("Cron processes will not run through because of NEXTAUTH_URL not being set on environmental variables.")
-    return;
-  }
+  const baseUrl = getInternalBaseUrl();
+
   try {
     cron.schedule('* * * * *', async () => {
-      await axios.post(`${process.env.NEXTAUTH_URL}/api/cron/update-sessions`, {}, {
-        headers: {
-          "x-cron-secret": process.env.CRON_SECRET
-        }
-      })
+      await axios.post(`${baseUrl}/api/cron/update-sessions`);
     });
-
     cron.schedule('0 * * * *', async () => {
-      await axios.post(`${process.env.NEXTAUTH_URL}/api/cron/update-roles`, {}, {
-        headers: {
-          "x-cron-secret": process.env.CRON_SECRET
-        }
-      })
+      await axios.post(`${baseUrl}/api/cron/update-roles`);
     });
-
     cron.schedule('0 0 * * *', async () => {
-      await axios.post(`${process.env.NEXTAUTH_URL}/api/cron/birthday`, {}, {
-        headers: {
-          "x-cron-secret": process.env.CRON_SECRET
-        }
-      })
+      await axios.post(`${baseUrl}/api/cron/birthday`);
     });
-
     cron.schedule('0 6 * * *', async () => {
-      await axios.post(`${process.env.NEXTAUTH_URL}/api/cron/reset-activity`, {}, {
-        headers: {
-          "x-cron-secret": process.env.CRON_SECRET
-        }
-      })
+      await axios.post(`${baseUrl}/api/cron/reset-activity`);
     });
-
     cron.schedule('* * * * *', async () => {
-      await axios.post(`${process.env.NEXTAUTH_URL}/api/cron/milestone`, {}, {
-        headers: {
-          "x-cron-secret": process.env.CRON_SECRET
-        }
-      })
+      await axios.post(`${baseUrl}/api/cron/milestone`);
     });
   } catch (err) {
-    console.log(`[CRON JOBS]: An error occured while running a cron job: ${err}`)
+    console.log(`[CRON JOBS]: An error occured while running a cron job: ${err}`);
   }
 
-  console.log("[STARTUP]: All crons scheduled.")
+  console.log("[STARTUP] All crons scheduled.");
 }
