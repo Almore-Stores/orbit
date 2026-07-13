@@ -214,10 +214,8 @@ async function createSession(
 ) {
   const rawToken = generateToken();
 
-  const info = await axios.get<IpapiRes>('https://ipapi.co/json');
-
-  const { browser, os, device } = parseUA(userAgent);
-  const geo = await lookupGeo(ipAddress);
+  const { browser, os, device } = parseUA(userAgent)
+  const geo = await lookupGeo(ipAddress)
 
   const session = await prisma.authSession.create({
     data: {
@@ -232,8 +230,8 @@ async function createSession(
       browser,
       os,
       device,
-      country: info.data.country_name,
-      region: info.data.region
+      country: geo.country,
+      region: geo.region,
     },
 
     include: {
