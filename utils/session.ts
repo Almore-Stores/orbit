@@ -87,8 +87,6 @@ async function lookupGeo(ipAddress?: string): Promise<GeoResult> {
       { timeout: 2000 }
     )
 
-    console.log(res)
-
     if ((res.data as any).error) {
       console.warn('ipapi.co returned an error payload:', (res.data as any).reason)
       return empty
