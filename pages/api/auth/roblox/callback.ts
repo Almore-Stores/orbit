@@ -60,7 +60,7 @@ export default async function handler(
 
   let clientId = process.env.ROBLOX_CLIENT_ID
   let clientSecret = process.env.ROBLOX_CLIENT_SECRET
-  let redirectUri = process.env.ROBLOX_REDIRECT_URI || `${process.env.NEXTAUTH_URL || process.env.PUBLIC_URL}/api/auth/roblox/callback`;
+  let redirectUri = process.env.ROBLOX_REDIRECT_URI || `${process.env.PLANETARY_CLOUD_URL || process.env.NEXTAUTH_URL || process.env.PUBLIC_URL}/api/auth/roblox/callback`;
 
   if (!clientId || !clientSecret || !redirectUri) {
     const configs = await prisma.instanceConfig.findMany({
@@ -163,7 +163,7 @@ export default async function handler(
 
     res.setHeader(
       'Set-Cookie',
-      `session_token=${session.token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${
+      `session_token=${session.token}; Path=/; HttpOnly; SameSite=lax; Max-Age=${
         60 * 60 * 24 * 30
       }; ${process.env.NODE_ENV === 'production' ? 'Secure;' : ''}`
     )
