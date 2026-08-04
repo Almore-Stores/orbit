@@ -11,7 +11,7 @@
   </a>
 
   <h1>Orbit</h1>
-  <p><strong>A modern, open-source staff management platform for Roblox groups — built and maintained by Team Planetary.</strong></p>
+  <p><strong>A modern, open-source staff management platform for Roblox groups — maintained by Team Planetary and the pawesome contributors.</strong></p>
 
   <a href="https://planetaryapp.us">Website</a> ·
   <a href="https://docs.planetaryapp.us">Documentation</a> ·
@@ -89,7 +89,7 @@ The fastest and easiest way to run Orbit is through **Planetary Cloud** — our 
 
 Prefer to host on your own Vercel account? Deploy in seconds:
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FPlanetaryOrbit%2Forbit&env=SESSION_SECRET,DATABASE_URL,PUBLIC_URL&build-command=npx%20prisma%20db%20push%20%26%26%20npx%20prisma%20generate%20%26%26%20npx%20next%20build%20--webpack">
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FPlanetaryOrbit%2Forbit%2Ftree%2Fv2.1.10beta21&env=SESSION_SECRET,DATABASE_URL,PUBLIC_URL&build-command=npx%20prisma%20db%20push%20%26%26%20npx%20prisma%20generate%20%26%26%20npx%20next%20build%20--webpack">
   <img src="https://vercel.com/button" alt="Deploy with Vercel" />
 </a>
 
@@ -233,19 +233,13 @@ Orbit is built with a modern, fully TypeScript stack:
 - **Frontend:** [Next.js](https://nextjs.org), [TailwindCSS](https://tailwindcss.com)
 - **Backend:** [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction), [Prisma ORM](https://www.prisma.io)
 - **Database:** Any Prisma-compatible database (PostgreSQL recommended)
+- **Bun** is used as the package manager and build tool.
 
 ---
 
 ## Contributing
 
-Contributions are welcome and appreciated. Whether you're fixing a bug, improving documentation, or proposing a new feature, here's how to get involved:
-
-1. **Fork** the repository and create a new branch from `main`.
-2. **Make your changes**, following the existing code style.
-3. **Test** your changes locally before submitting.
-4. **Open a Pull Request** with a clear description of what you've changed and why.
-
-For bug reports and feature requests, please use our [feedback portal](https://feedback.planetaryapp.us/bugs). For questions and discussion, join our [Discord server](https://discord.com/invite/mWqdZmEkDc).
+View the [contribution guidelines](./CONTRIBUTING.md) for more information on how to contribute to Orbit. Failure to follow these guidelines may result in your pull request being rejected.
 
 ---
 

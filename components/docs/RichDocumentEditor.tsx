@@ -268,7 +268,7 @@ export default function RichDocumentEditor({
   useEffect(() => {
     if (!editor || value === lastEmitted.current) return;
     syncingRef.current = true;
-    editor.commands.setContent(markdownToHtml(value), false);
+    editor.commands.setContent(markdownToHtml(value), { emitUpdate: false });
     lastEmitted.current = value;
     syncingRef.current = false;
   }, [editor, value]);
@@ -362,7 +362,7 @@ export default function RichDocumentEditor({
         {editor && !disabled && (
           <BubbleMenu
             editor={editor}
-            tippyOptions={{ duration: 100, placement: "top", offset: [0, 8] }}
+            options={{ placement: "top", offset: 10 }}
             className="flex items-center gap-0.5 rounded-lg border border-zinc-200/90 bg-white/95 p-0.5 shadow-xl backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/95"
           >
             <BubbleBtn

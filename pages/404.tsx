@@ -7,7 +7,7 @@ export default function Error() {
   return (
     <>
       <Head>
-        <title>404 — Page Not Found</title>
+        <title>404 - Page Not Found</title>
         <meta name="robots" content="noindex" />
       </Head>
 
@@ -69,8 +69,6 @@ export default function Error() {
                   Report an issue
                 </Link>
               </div>
-
-              <p className="mt-4 text-sm text-zinc-500">Or try searching from the sidebar.</p>
             </div>
           </div>
         </motion.div>
