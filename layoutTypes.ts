@@ -14,7 +14,3 @@ export type LayoutProps = ({
 export type LayoutComponent = NextPage & {
 	Layout: LayoutProps
 }
-
-
-
-// Path: _app.tsx

@@ -1,0 +1,14 @@
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  noblox.js: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+onlyBuiltDependencies:
+  - "@parcel/watcher"
+  - "@prisma/engines"
+  - "noblox.js"
+  - "prisma"
+  - "sharp"
+  - "unrs-resolver"

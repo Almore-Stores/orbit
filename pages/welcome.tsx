@@ -10,12 +10,43 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { IconCheck, IconEye, IconEyeOff, IconInfoCircle, IconX } from "@tabler/icons-react";
 import { getContrastColor } from "@/utils/color";
+import PasswordStrengthBar from "@/components/passwordStrengthBar";
+import { calculatePasswordStrength } from "@/utils/passwordStrength";
+import packageinfo from "@/package.json";
 
 type FormData = {
   username: string;
   password: string;
   verifypassword: string;
 };
+
+const StepIndicator = ({
+  step,
+  color,
+}: {
+  step: number;
+  color: string;
+}) => (
+  <div className="mb-6 flex items-center justify-between">
+    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+      Step {step} of 3
+    </p>
+    <div className="flex items-center gap-1.5" aria-hidden="true">
+      {[1, 2, 3].map((value) => (
+        <span
+          key={value}
+          className={`h-1.5 rounded-full transition-all duration-300 ${
+            value <= step ? "" : "bg-zinc-200 dark:bg-zinc-600"
+          }`}
+          style={{
+            backgroundColor: value <= step ? color : undefined,
+            width: value === step ? 24 : 8,
+          }}
+        />
+      ))}
+    </div>
+  </div>
+);
 
 const Login: NextPage = () => {
   const [selectedColor, setSelectedColor] = useState("#9d8fff");
@@ -33,6 +64,8 @@ const Login: NextPage = () => {
   const [ocLoading, setOcLoading] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const testedKey = useRef<string | null>(null);
+  const signupPassword = signupform.watch("password") || "";
+  const signupPasswordStrength = calculatePasswordStrength(signupPassword);
 
   async function createAccount() {
     setIsLoading(true);
@@ -59,7 +92,9 @@ const Login: NextPage = () => {
           ...request?.data.user,
           isOwner: true
         }));
-        Router.push("/");
+        setTimeout(() => {
+          Router.replace("/");
+        }, 1000);
       }
     } catch (e: any) {
       if (e?.response?.status === 404) {
@@ -79,13 +114,6 @@ const Login: NextPage = () => {
       return;
     } finally {
       setIsLoading(false);
-      if (!request) return;
-
-      // Add a small delay before redirecting
-      setTimeout(() => {
-        Router.push("/");
-        Router.reload();
-      }, 1000);
     }
   }
 
@@ -181,8 +209,11 @@ const Login: NextPage = () => {
         <div className="w-full max-w-md">
           <Slider activeSlide={selectedSlide}>
             <div>
-              <p className="font-bold text-2xl dark:text-white">Let&apos;s get started</p>
-              <p className="text-sm mt-1 text-zinc-500 dark:text-zinc-200">
+              <StepIndicator step={1} color={selectedColor} />
+              <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                Let&apos;s get started
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 To configure your Orbit instance, we&apos;ll need some information
               </p>
               <FormProvider {...methods}>
@@ -228,7 +259,7 @@ const Login: NextPage = () => {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => window.open("https://docs.planetaryapp.cloud/", "_blank", "noopener,noreferrer")}
+                  onClick={() => window.open("https://docs.planetaryapp.us/", "_blank", "noopener,noreferrer")}
                   className="border-2 py-2.5 text-sm rounded-xl px-4 text-zinc-600 dark:text-white font-bold hover:bg-orbit/10 transition"
                   style={{ borderColor: selectedColor }}
                 >
@@ -239,7 +270,7 @@ const Login: NextPage = () => {
                   onClick={() => {
                     handleSubmit(nextSlide)();
                   }}
-                  className="ml-auto bg-orbit py-2.5 text-sm rounded-xl px-6 font-bold hover:bg-orbit/80 transition"
+                  className="ml-auto py-2.5 text-sm rounded-xl px-6 font-bold transition hover:enabled:opacity-90"
                   style={{ backgroundColor: selectedColor, color: getContrastColor(selectedColor) }}
                 >
                   Continue
@@ -248,8 +279,9 @@ const Login: NextPage = () => {
             </div>
 
             <div>
-              <p className="font-bold text-2xl dark:text-white">Open Cloud</p>
-              <p className="text-sm mt-1 text-zinc-500 dark:text-zinc-200">
+              <StepIndicator step={2} color={selectedColor} />
+              <p className="text-2xl font-bold text-zinc-900 dark:text-white">Open Cloud</p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 Optionally connect Roblox Open Cloud for deeper integration with your group. You can always set this up later in Settings.
               </p>
 
@@ -339,7 +371,7 @@ const Login: NextPage = () => {
                   type="button"
                   onClick={() => setSelectedSlide(2)}
                   disabled={ocTesting || (ockey.length > 0 && ocKeyStatus !== "verified")}
-                  className={`ml-auto py-2.5 text-sm rounded-xl px-6 text-white font-bold hover:bg-orbit/80 transition ${ocTesting || (ockey.length > 0 && ocKeyStatus !== "verified") ? 'opacity-50 cursor-not-allowed' : ''
+                  className={`ml-auto py-2.5 text-sm rounded-xl px-6 font-bold transition hover:enabled:opacity-90 ${ocTesting || (ockey.length > 0 && ocKeyStatus !== "verified") ? 'cursor-not-allowed opacity-50' : ''
                     }`}
                     style={{ backgroundColor: selectedColor, color: getContrastColor(selectedColor) }}
                 >
@@ -350,35 +382,53 @@ const Login: NextPage = () => {
 
             {!isRegistered && (
               <div>
-                <p className="font-bold text-2xl dark:text-white">Make your Orbit account</p>
-                <p className="text-sm mt-1 text-zinc-500 dark:text-zinc-200">
+                <StepIndicator step={3} color={selectedColor} />
+                <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                  Make your Orbit account
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                   You need to create an Orbit account to continue
                 </p>
+
                 <FormProvider {...signupform}>
-                  <form className="mt-4" onSubmit={signupform.handleSubmit(createAccount)}>
+                  <form
+                    className="mt-4"
+                    onSubmit={signupform.handleSubmit(createAccount)}
+                  >
                     <Input
                       {...signupform.register("username", {
-                        required: "Username is required"
+                        required: "Username is required",
                       })}
                       label="Roblox Username"
                     />
+
                     {signupform.formState.errors.username && (
                       <p className="text-red-500 text-sm mt-1">
                         {signupform.formState.errors.username.message}
                       </p>
                     )}
 
-                    <Input
-                      type="password"
-                      {...signupform.register("password", {
-                        required: "Password is required",
-                        minLength: {
-                          value: 8,
-                          message: "Password must be at least 8 characters"
-                        }
-                      })}
-                      label="Password"
-                    />
+                    <div className="mt-3">
+                      <Input
+                        type="password"
+                        {...signupform.register("password", {
+                          required: "Password is required",
+                          validate: (value) => {
+                            const { score } = calculatePasswordStrength(value);
+
+                            return (
+                              score >= 3 ||
+                              "Password must be at least Strong"
+                            );
+                          },
+                        })}
+                        label="Password"
+                      />
+
+                      <PasswordStrengthBar password={signupPassword} />
+                    </div>
+
                     {signupform.formState.errors.password && (
                       <p className="text-red-500 text-sm mt-1">
                         {signupform.formState.errors.password.message}
@@ -389,12 +439,13 @@ const Login: NextPage = () => {
                       type="password"
                       {...signupform.register("verifypassword", {
                         required: "Please verify your password",
-                        validate: value =>
-                          value === signupform.getValues('password') ||
-                          "Passwords do not match"
+                        validate: (value) =>
+                          value === signupform.getValues("password") ||
+                          "Passwords do not match",
                       })}
                       label="Verify password"
                     />
+
                     {signupform.formState.errors.verifypassword && (
                       <p className="text-red-500 text-sm mt-1">
                         {signupform.formState.errors.verifypassword.message}
@@ -411,14 +462,19 @@ const Login: NextPage = () => {
                   >
                     Back
                   </button>
+
                   <button
                     type="button"
                     onClick={signupform.handleSubmit(createAccount)}
-                    disabled={isLoading}
-                    className={`ml-auto py-2.5 text-sm rounded-xl px-6 text-white font-bold hover:bg-orbit/80 transition ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    style={{ backgroundColor: selectedColor }}
+                    disabled={isLoading || signupPasswordStrength.score < 3}
+                    className={`ml-auto py-2.5 text-sm rounded-xl px-6 font-bold transition hover:enabled:opacity-90 ${
+                      isLoading || signupPasswordStrength.score < 3
+                        ? "cursor-not-allowed opacity-50"
+                        : ""
+                    }`}
+                    style={{ backgroundColor: selectedColor, color: getContrastColor(selectedColor) }}
                   >
-                    {isLoading ? 'Creating...' : 'Continue'}
+                    {isLoading ? "Creating..." : "Continue"}
                   </button>
                 </div>
               </div>
@@ -426,6 +482,31 @@ const Login: NextPage = () => {
           </Slider>
         </div>
       </div>
+
+      <footer className="relative z-10 flex flex-col items-center gap-2 px-4 pb-8">
+        <div className="flex items-center gap-5 text-xs font-semibold text-white/85">
+          <a
+            href="https://docs.planetaryapp.us/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition hover:text-white hover:underline"
+          >
+            Documentation
+          </a>
+          <a
+            href="https://github.com/planetaryorbit/orbit"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition hover:text-white hover:underline"
+          >
+            GitHub
+          </a>
+        </div>
+
+        <p className="text-[11px] text-white/60">
+          Orbit v{packageinfo.version}
+        </p>
+      </footer>
     </div>
   );
 };

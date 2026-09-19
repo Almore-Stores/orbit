@@ -11,17 +11,17 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Dialog } from "@headlessui/react";
 import { IconX } from "@tabler/icons-react";
-import { RobloxOAuthAvailable } from "@/hooks/useRobloxOAuth";
-import { DiscordOAuthAvailable } from "@/hooks/useDiscordOAuth";
 import toast from "react-hot-toast";
-import { GoogleOAuthAvailable } from "@/hooks/useGoogleOAuth";
-import { OAuthAvailable } from "@/hooks/useOAuth";
+import { useOAuthConfig } from "@/hooks/useOAuthConfig";
 import clsx from "clsx";
+import { RobloxOAuthAvailable } from "@/hooks/useRobloxOAuth";
 import {
   sessionFormInputOverride,
   sessionPrimaryButtonClass,
   sessionSecondaryButtonClass,
 } from "@/components/sessions/shell";
+import PasswordStrengthBar from "@/components/passwordStrengthBar";
+import { calculatePasswordStrength } from "@/utils/passwordStrength";
 
 const oauthButtonClass =
   "w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-200 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700";
@@ -122,9 +122,20 @@ function getAvatarBgColor(displayName: string): string {
 const Login: NextPage = () => {
   const [login, setLogin] = useRecoilState(loginState);
   const { isAvailable: isRobloxOAuth } = RobloxOAuthAvailable();
-  const { oauthOnly, isAvailable: isOAuthAvailable } = OAuthAvailable();
-  const { isAvailable: isDiscordOAuth } = DiscordOAuthAvailable();
-  const { isAvailable: isGoogleOAuth } = GoogleOAuthAvailable();
+
+  const {
+    discord,
+    google,
+    oauthOnly,
+    loading: oauthConfigLoading,
+  } = useOAuthConfig();
+
+  const isDiscordOAuth = discord.available;
+  const isGoogleOAuth = google.available;
+
+  const isOAuthAvailable = isRobloxOAuth || isDiscordOAuth || isGoogleOAuth;
+
+  const effectiveOAuthOnly = oauthOnly && isOAuthAvailable;
 
   const loginMethods = useForm<LoginForm>();
   const signupMethods = useForm<SignupForm>();
@@ -155,7 +166,6 @@ const Login: NextPage = () => {
     null,
   );
   const [showPassword, setShowPassword] = useState(false);
-  const [showCopyright, setShowCopyright] = useState(false);
   const [usernameCheckLoading, setUsernameCheckLoading] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
     null,
@@ -164,8 +174,6 @@ const Login: NextPage = () => {
 
   const errorToastShown = useRef(false);
   const usernameCheckTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  const effectiveOAuthOnly = oauthOnly && isOAuthAvailable;
 
   useEffect(() => {
     loginMethods.reset();
@@ -182,6 +190,9 @@ const Login: NextPage = () => {
     if (usernameCheckTimeout.current)
       clearTimeout(usernameCheckTimeout.current);
   }, [mode]);
+
+  const signupPassword = signupMethods.watch("password") || "";
+  const passwordStrength = calculatePasswordStrength(signupPassword);
 
   useEffect(() => {
     let isMounted = true;
@@ -458,17 +469,11 @@ const Login: NextPage = () => {
 
       <div className="relative min-h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
         {loginBg ? (
-          <>
-            <div
-              className="fixed inset-0 bg-cover bg-center bg-no-repeat"
-              style={{ backgroundImage: `url(${loginBg})` }}
-              aria-hidden
-            />
-            <div
-              className="fixed inset-0 bg-zinc-50/90 dark:bg-zinc-950/88"
-              aria-hidden
-            />
-          </>
+          <div
+            className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${loginBg})` }}
+            aria-hidden
+          />
         ) : null}
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(var(--group-theme,236,72,153),0.08),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(var(--group-theme,236,72,153),0.12),transparent)]"
@@ -772,9 +777,11 @@ const Login: NextPage = () => {
                         <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
                           Set a password
                         </h2>
+
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                           Choose a secure password for your account.
                         </p>
+
                         <FormProvider {...signupMethods}>
                           <form
                             onSubmit={submitSignup(onSubmitSignup)}
@@ -794,13 +801,21 @@ const Login: NextPage = () => {
                                   message:
                                     "Password must be at least 7 characters",
                                 },
-                                pattern: {
-                                  value: /^(?=.*[0-9!@#$%^&*])/,
-                                  message:
-                                    "Password must contain at least one number or special character",
+                                validate: (value) => {
+                                  const { score } =
+                                    calculatePasswordStrength(value);
+
+                                  if (score < 3) {
+                                    return "Password is not strong enough";
+                                  }
+
+                                  return true;
                                 },
                               })}
                             />
+
+                            <PasswordStrengthBar password={signupPassword} />
+
                             <Input
                               label="Verify password"
                               placeholder="Verify password"
@@ -814,6 +829,7 @@ const Login: NextPage = () => {
                                   "Passwords must match",
                               })}
                             />
+
                             <div className="flex gap-3 pt-4">
                               <button
                                 type="button"
@@ -826,14 +842,16 @@ const Login: NextPage = () => {
                               >
                                 Back
                               </button>
+
                               <AuthSubmitButton
                                 className="flex-1 justify-center"
                                 loading={loading}
-                                disabled={loading}
+                                disabled={loading || passwordStrength.score < 3}
                               >
                                 Continue
                               </AuthSubmitButton>
                             </div>
+
                             {(isRobloxOAuth ||
                               isDiscordOAuth ||
                               isGoogleOAuth) && (
@@ -842,6 +860,7 @@ const Login: NextPage = () => {
                                 <OAuthButtons />
                               </>
                             )}
+
                             <p className="mt-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
                               Don&apos;t share your password. Don&apos;t use the
                               same password as your Roblox account.
@@ -912,65 +931,7 @@ const Login: NextPage = () => {
             </div>
           </div>
         </div>
-
-        <div className="fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6">
-          <button
-            onClick={() => setShowCopyright(true)}
-            className="text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
-            type="button"
-          >
-            © Copyright Notices
-          </button>
-        </div>
       </div>
-
-      <Dialog
-        open={showCopyright}
-        onClose={() => setShowCopyright(false)}
-        className="relative z-50"
-      >
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-          aria-hidden="true"
-        />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel
-            className={clsx(
-              "mx-auto max-w-sm rounded-2xl bg-white p-6 dark:bg-zinc-900 shadow-[0_1px_3px_0_rgb(0,0,0,0.06),0_1px_2px_-1px_rgb(0,0,0,0.04)] dark:shadow-zinc-950/30",
-            )}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <Dialog.Title className="text-lg font-semibold text-zinc-900 dark:text-white">
-                Copyright Notices
-              </Dialog.Title>
-              <button
-                onClick={() => setShowCopyright(false)}
-                className="rounded-xl p-1.5 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <IconX className="h-5 w-5 text-zinc-500" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h3 className="mb-1 text-sm font-medium text-zinc-900 dark:text-white">
-                  Orbit features, enhancements, and modifications:
-                </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Copyright © 2026 Planetary. All rights reserved.
-                </p>
-              </div>
-              <div>
-                <h3 className="mb-1 text-sm font-medium text-zinc-900 dark:text-white">
-                  Original Tovy features and code:
-                </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Copyright © 2022 Tovy. All rights reserved.
-                </p>
-              </div>
-            </div>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
     </>
   );
 };

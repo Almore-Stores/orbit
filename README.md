@@ -85,6 +85,9 @@ The fastest and easiest way to run Orbit is through **Planetary Cloud** — our 
 > 
 > Vercel's serverless architecture introduces real limitations that affect Orbit's reliability — including cold starts, execution timeouts, and constraints on long-running processes like session handling and activity tracking. You may run into hard-to-debug issues that simply don't exist on Planetary Cloud.
 >
+> Vercel support ended with v2.1.11beta.1. Version v2.1.10beta21 is the last Vercel-supported release. Later releases do not receive Vercel support because Vercel's serverless infrastructure limits memory caching.
+> More information can be found in the latest update announcement ([Discord Announcement](https://discord.com/channels/1348101138670682156/1363239258659487864/1534022285453951087)).
+>
 > **[Planetary Cloud](https://planetaryapp.us) is free, purpose-built for Orbit, and works out of the box — no configuration needed.** We can't guarantee a great experience on Vercel, and support for Vercel-specific issues is limited.
 
 Prefer to host on your own Vercel account? Deploy in seconds:
@@ -100,13 +103,33 @@ Prefer to host on your own Vercel account? Deploy in seconds:
 | `SESSION_SECRET` | A strong secret string — generate with `openssl rand -base64 32` |
 | `DATABASE_URL` | Your database connection string (e.g. [Supabase](https://supabase.com), [Railway](https://railway.app), [Neon](https://neon.tech)) |
 | `NEXTAUTH_URL` or `PUBLIC_URL` | Your deployment URL, without a trailing slash (e.g. `https://instance.planetaryapp.cloud`) |
-| `ROBLOX_WORKSPACE_REDIRECTID` | Your Roblox Group ID — users with workspace access will be redirected automatically |
 
 ---
 
 ### Self-Hosting
 
 For full self-hosting instructions, refer to the [official documentation](https://docs.planetaryapp.us).
+
+#### System Requirements
+
+Orbit is designed to run on a small Linux server, but we recommend giving it enough resources for Node.js, dependency installation, and Next.js builds.
+
+| Resource | Minimum | Recommended |
+|---|---:|---:|
+| **CPU** | 2 cores | 2–4+ cores |
+| **RAM** | 2 GB | 4 GB+ |
+| **Storage** | 10 GB | 20 GB+ SSD |
+| **Database** | Any Prisma-compatible DB | PostgreSQL |
+| **Node.js** | 20+ | Latest supported LTS |
+| **OS** | Linux | Linux |
+
+> [!WARNING]
+> You cannot use MongoDB, as MongoDB's database interface is NoSQL, and Orbit was programmed to be in SQL-like interface (such as PostgresSQL), and therefore is not compatible with MongoDB.
+
+> [!TIP]
+> **An SSD is strongly recommended.** Orbit's dependencies can consume a significant amount of disk space, particularly `node_modules`, and Next.js builds perform a considerable amount of disk I/O. We recommend having at least 20 GB of available storage for a comfortable installation.
+
+The minimum requirements are intended to represent the lowest practical configuration for running Orbit, not a recommended production environment. For production installations, we recommend **4 GB or more of RAM and SSD storage**.
 
 ---
 
@@ -233,7 +256,7 @@ Orbit is built with a modern, fully TypeScript stack:
 - **Frontend:** [Next.js](https://nextjs.org), [TailwindCSS](https://tailwindcss.com)
 - **Backend:** [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction), [Prisma ORM](https://www.prisma.io)
 - **Database:** Any Prisma-compatible database (PostgreSQL recommended)
-- **Bun** is used as the package manager and build tool.
+- **PNPM** is used as the package manager and build tool.
 
 ---
 
@@ -250,5 +273,5 @@ Orbit is licensed under the [GNU General Public License v3.0](./LICENSE). You ar
 ---
 
 <div align="center">
-  <sub>Built with ❤️ by <a href="https://planetaryapp.us">Team Planetary</a></sub>
+  <sub>Built with ❤️ by <a href="https://planetaryapp.us">Team Planetary</a>. meow</sub>.
 </div>
