@@ -1,7 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import prisma from "@/utils/database";
-import { AuthenticatedRequest, withAuth } from "@/lib/withAuth";
-import cache from "@/utils/cache";
+import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
+import cache from '@/utils/cache';
+import prisma from '@/utils/database';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 type Data = {
   success: boolean;
@@ -11,68 +11,56 @@ type Data = {
 
 export default withAuth(handler);
 
-export async function handler(
-  req: AuthenticatedRequest,
-  res: NextApiResponse<Data>
-) {
-  if (req.method !== "GET") {
+export async function handler(req: AuthenticatedRequest, res: NextApiResponse<Data>) {
+  if (req.method !== 'GET') {
     return res.status(405).json({
       success: false,
-      error: "Method not allowed",
+      error: 'Method not allowed',
     });
   }
 
   if (!req.auth.session?.userId) {
     return res.status(401).json({
       success: false,
-      error: "Not logged in",
+      error: 'Not logged in',
     });
   }
 
   try {
     const cacheKey = `user:owner:${req.auth.userId}`;
 
-    let isOwner = await cache.get<boolean>(cacheKey);
-
-    if (isOwner === null) {
-      const user = await prisma.user.findUnique({
-        where: {
-          userid: req.auth.userId,
-        },
-        select: {
-          isOwner: true,
-        },
-      });
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: "User not found",
+    const isOwner = await cache.swr<boolean>(
+      cacheKey,
+      async () => {
+        const user = await prisma.user.findUnique({
+          where: {
+            userid: req.auth.userId,
+          },
+          select: {
+            isOwner: true,
+          },
         });
-      }
 
-      isOwner = user.isOwner || false;
+        if (!user) throw new Error('User not found');
 
-      await cache.set(
-        cacheKey,
-        isOwner,
-        600
-      );
-    }
+        return user.isOwner ?? false;
+      },
+      {
+        freshFor: 60,
+        staleFor: 600,
+      },
+    );
 
     return res.status(200).json({
       success: true,
       isOwner,
     });
   } catch (error) {
-    console.error(
-      "Error checking workspace ownership:",
-      error
-    );
+    console.error('Error checking workspace ownership:', error);
 
     return res.status(500).json({
       success: false,
-      error: "Internal server error",
+      error: 'Internal server error',
     });
   }
 }

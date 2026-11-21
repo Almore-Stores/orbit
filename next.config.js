@@ -1,6 +1,26 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
+  // Recoil 0.7.7 and Headless UI v1 both use React APIs removed in React 19.
+  // Their small incompatible helpers are redirected to public-API shims.
+  webpack: (config, { webpack }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      recoil: path.resolve(__dirname, 'lib/recoil-compat.tsx'),
+    };
+
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /stable-collection\.js$/,
+        path.resolve(__dirname, 'lib/headlessui-stable-collection.js'),
+      ),
+    );
+
+    return config;
+  },
 
   experimental: {
     workerThreads: false,
@@ -14,39 +34,39 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "tr.rbxcdn.com",
+        protocol: 'https',
+        hostname: 'tr.rbxcdn.com',
       },
     ],
   },
 
   env: {
-    NEXT_PUBLIC_DATABASE_CHECK: process.env.DATABASE_URL ? "true" : "",
+    NEXT_PUBLIC_DATABASE_CHECK: process.env.DATABASE_URL ? 'true' : '',
   },
 
   async headers() {
     return [
       {
-        source: "/:path*",
+        source: '/:path*',
         headers: [
           {
-            key: "X-DNS-Prefetch-Control",
-            value: "on",
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
           },
           {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
           },
           {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
           },
           {
-            key: "X-Frame-Options",
-            value: "DENY",
+            key: 'X-Frame-Options',
+            value: 'DENY',
           },
           {
-            key: "Content-Security-Policy",
+            key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline'",
@@ -60,7 +80,7 @@ const nextConfig = {
               "base-uri 'self'",
               "form-action 'self'",
               "media-src 'self' https://audio-ssl.itunes.apple.com",
-            ].join("; "),
+            ].join('; '),
           },
         ],
       },

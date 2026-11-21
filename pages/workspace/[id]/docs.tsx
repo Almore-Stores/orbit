@@ -1,10 +1,22 @@
-import type { pageWithLayout } from "@/layoutTypes";
-import { workspacestate } from "@/state";
-import Workspace from "@/layouts/workspace";
-import { useRecoilState } from "recoil";
-import { useRouter } from "next/router";
-import prisma, { document } from "@/utils/database";
-import { withPermissionCheckSsr } from "@/utils/permissionsManager";
+import { isExternalContent } from '@/components/docs/content';
+import {
+  DEFAULT_FOLDER_ICON,
+  normalizeFolderIcon,
+  type FolderIconId,
+} from '@/components/docs/folderIcons';
+import { DocsBreadcrumbs, DocsFolderCard, type DocFolderOption } from '@/components/docs/folders';
+import {
+  ExternalLinkModal,
+  FolderNameModal,
+  DeleteFolderModal,
+  useExternalLinkModal,
+} from '@/components/docs/modals';
+import { DocsPageShell, DocsPageHeader, DocsPanel, DocsEmptyState } from '@/components/docs/shell';
+import Workspace from '@/layouts/workspace';
+import type { pageWithLayout } from '@/layoutTypes';
+import { workspacestate } from '@/state';
+import prisma, { document } from '@/utils/database';
+import { withPermissionCheckSsr } from '@/utils/permissionsManager';
 import {
   IconFileText,
   IconPlus,
@@ -12,47 +24,21 @@ import {
   IconLink,
   IconPencil,
   IconFolder,
-} from "@tabler/icons-react";
-import { useState } from "react";
-import axios from "axios";
-import { toast } from "react-hot-toast";
-import {
-  DocsPageShell,
-  DocsPageHeader,
-  DocsPanel,
-  DocsEmptyState,
-} from "@/components/docs/shell";
-import {
-  ExternalLinkModal,
-  FolderNameModal,
-  DeleteFolderModal,
-  useExternalLinkModal,
-} from "@/components/docs/modals";
-import {
-  DocsBreadcrumbs,
-  DocsFolderCard,
-  type DocFolderOption,
-} from "@/components/docs/folders";
-import { isExternalContent } from "@/components/docs/content";
-import {
-  DEFAULT_FOLDER_ICON,
-  normalizeFolderIcon,
-  type FolderIconId,
-} from "@/components/docs/folderIcons";
+} from '@tabler/icons-react';
+import axios from 'axios';
+import { useRouter } from 'next/router';
+import { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { useRecoilState } from 'recoil';
 
 type FolderWithCounts = DocFolderOption & {
   _count: { documents: number; children: number };
 };
 
-function buildDocumentAccessFilter(
-  userRoleIds: string[],
-  userDepartmentIds: string[]
-) {
+function buildDocumentAccessFilter(userRoleIds: string[], userDepartmentIds: string[]) {
   return {
     OR: [
-      ...(userRoleIds.length > 0
-        ? [{ roles: { some: { id: { in: userRoleIds } } } }]
-        : []),
+      ...(userRoleIds.length > 0 ? [{ roles: { some: { id: { in: userRoleIds } } } }] : []),
       ...(userDepartmentIds.length > 0
         ? [{ departments: { some: { id: { in: userDepartmentIds } } } }]
         : []),
@@ -63,7 +49,7 @@ function buildDocumentAccessFilter(
 
 async function buildBreadcrumbs(
   folderId: string,
-  workspaceGroupId: number
+  workspaceGroupId: number,
 ): Promise<DocFolderOption[]> {
   const path: DocFolderOption[] = [];
   let currentId: string | null = folderId;
@@ -85,12 +71,11 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
   const { id, folder: folderQuery } = context.query;
   const userid = context.req.auth.userId;
   if (!userid || !id) {
-    return { redirect: { destination: "/login" } };
+    return { redirect: { destination: '/login' } };
   }
 
   const workspaceGroupId = parseInt(id as string);
-  const currentFolderId =
-    typeof folderQuery === "string" && folderQuery ? folderQuery : null;
+  const currentFolderId = typeof folderQuery === 'string' && folderQuery ? folderQuery : null;
 
   const user = await prisma.user.findFirst({
     where: { userid },
@@ -103,16 +88,16 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
     },
   });
 
-  if (!user) return { redirect: { destination: "/login" } };
+  if (!user) return { redirect: { destination: '/login' } };
 
   const config = await prisma.config.findFirst({
-    where: { workspaceGroupId, key: "guides" },
+    where: { workspaceGroupId, key: 'guides' },
   });
 
   let guidesEnabled = false;
   if (config?.value) {
     let val = config.value;
-    if (typeof val === "string") {
+    if (typeof val === 'string') {
       try {
         val = JSON.parse(val);
       } catch {
@@ -120,8 +105,8 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
       }
     }
     guidesEnabled =
-      typeof val === "object" && val !== null && "enabled" in val
-        ? (val as { enabled?: boolean }).enabled ?? false
+      typeof val === 'object' && val !== null && 'enabled' in val
+        ? ((val as { enabled?: boolean }).enabled ?? false)
         : false;
   }
 
@@ -130,19 +115,14 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
   const membership = user.workspaceMemberships?.[0];
   const isAdmin = membership?.isAdmin || false;
   const userRoleIds = (user.roles || []).map((r: any) => r.id);
-  const userDepartmentIds = (membership?.departmentMembers || []).map(
-    (d: any) => d.departmentId
-  );
+  const userDepartmentIds = (membership?.departmentMembers || []).map((d: any) => d.departmentId);
 
   const canCreate =
-    isAdmin ||
-    (user.roles || []).some((r: any) => (r.permissions || []).includes("create_docs"));
+    isAdmin || (user.roles || []).some((r: any) => (r.permissions || []).includes('create_docs'));
   const canEdit =
-    isAdmin ||
-    (user.roles || []).some((r: any) => (r.permissions || []).includes("edit_docs"));
+    isAdmin || (user.roles || []).some((r: any) => (r.permissions || []).includes('edit_docs'));
   const canDelete =
-    isAdmin ||
-    (user.roles || []).some((r: any) => (r.permissions || []).includes("delete_docs"));
+    isAdmin || (user.roles || []).some((r: any) => (r.permissions || []).includes('delete_docs'));
   const canManage = canCreate || canEdit || canDelete;
 
   if (currentFolderId) {
@@ -170,7 +150,7 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
     include: {
       owner: { select: { username: true, picture: true } },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { updatedAt: 'desc' },
   });
 
   const folders = await prisma.documentFolder.findMany({
@@ -189,7 +169,7 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
         select: { documents: true, children: true },
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: { name: 'asc' },
   });
 
   const breadcrumbs = currentFolderId
@@ -199,7 +179,7 @@ export const getServerSideProps = withPermissionCheckSsr(async (context: any) =>
   return {
     props: {
       documents: JSON.parse(
-        JSON.stringify(docs, (_k, v) => (typeof v === "bigint" ? v.toString() : v))
+        JSON.stringify(docs, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
       ) as (document & { owner: { username: string; picture: string } })[],
       folders: JSON.parse(JSON.stringify(folders)) as FolderWithCounts[],
       breadcrumbs: JSON.parse(JSON.stringify(breadcrumbs)) as DocFolderOption[],
@@ -237,8 +217,8 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
   const workspaceLabel = workspace.customName || workspace.groupName;
   const externalLink = useExternalLinkModal();
 
-  const [folderModalMode, setFolderModalMode] = useState<"create" | "rename" | null>(null);
-  const [folderName, setFolderName] = useState("");
+  const [folderModalMode, setFolderModalMode] = useState<'create' | 'rename' | null>(null);
+  const [folderName, setFolderName] = useState('');
   const [folderIcon, setFolderIcon] = useState<FolderIconId>(DEFAULT_FOLDER_ICON);
   const [folderModalError, setFolderModalError] = useState<string | null>(null);
   const [folderModalLoading, setFolderModalLoading] = useState(false);
@@ -262,15 +242,15 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
   };
 
   const openCreateFolder = () => {
-    setFolderModalMode("create");
-    setFolderName("");
+    setFolderModalMode('create');
+    setFolderName('');
     setFolderIcon(DEFAULT_FOLDER_ICON);
     setFolderModalError(null);
   };
 
   const openRenameFolder = (folder: FolderWithCounts) => {
     setRenamingFolder(folder);
-    setFolderModalMode("rename");
+    setFolderModalMode('rename');
     setFolderName(folder.name);
     setFolderIcon(normalizeFolderIcon(folder.icon));
     setFolderModalError(null);
@@ -282,25 +262,25 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
     setFolderModalError(null);
 
     try {
-      if (folderModalMode === "create") {
+      if (folderModalMode === 'create') {
         await axios.post(`/api/workspace/${workspaceId}/guides/folders/create`, {
           name: folderName.trim(),
           parentId: currentFolderId,
           icon: folderIcon,
         });
-        toast.success("Folder created");
+        toast.success('Folder created');
       } else if (renamingFolder) {
         await axios.post(
           `/api/workspace/${workspaceId}/guides/folders/${renamingFolder.id}/update`,
-          { name: folderName.trim(), icon: folderIcon }
+          { name: folderName.trim(), icon: folderIcon },
         );
-        toast.success("Folder updated");
+        toast.success('Folder updated');
       }
       setFolderModalMode(null);
       setRenamingFolder(null);
       refreshPage();
     } catch (err: any) {
-      setFolderModalError(err?.response?.data?.error || "Something went wrong");
+      setFolderModalError(err?.response?.data?.error || 'Something went wrong');
     } finally {
       setFolderModalLoading(false);
     }
@@ -310,10 +290,8 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
     if (!deletingFolder) return;
     setDeleteFolderLoading(true);
     try {
-      await axios.post(
-        `/api/workspace/${workspaceId}/guides/folders/${deletingFolder.id}/delete`
-      );
-      toast.success("Folder deleted");
+      await axios.post(`/api/workspace/${workspaceId}/guides/folders/${deletingFolder.id}/delete`);
+      toast.success('Folder deleted');
       setDeletingFolder(null);
       if (currentFolderId === deletingFolder.id) {
         const parentHref = deletingFolder.parentId
@@ -324,14 +302,14 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
         refreshPage();
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to delete folder");
+      toast.error(err?.response?.data?.error || 'Failed to delete folder');
     } finally {
       setDeleteFolderLoading(false);
     }
   };
 
   const breadcrumbItems = [
-    { label: "Documents", href: docsBase },
+    { label: 'Documents', href: docsBase },
     ...breadcrumbs.map((folder, index) => ({
       label: folder.name,
       href: index < breadcrumbs.length - 1 ? `${docsBase}?folder=${folder.id}` : undefined,
@@ -341,30 +319,33 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
   return (
     <DocsPageShell>
       <DocsPageHeader
-        title={breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1].name : "Documents"}
-        subtitle="Create and manage your workspace documentation"
+        title={breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1].name : 'Documents'}
+        subtitle='Create and manage your workspace documentation'
         workspaceLabel={workspaceLabel}
         action={
           canCreate ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className='flex flex-wrap items-center gap-2'>
               <button
-                type="button"
+                type='button'
                 onClick={openCreateFolder}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                className='inline-flex items-center gap-1.5 rounded-xl bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
               >
-                <IconFolder className="h-4 w-4" stroke={1.75} />
+                <IconFolder
+                  className='h-4 w-4'
+                  stroke={1.75}
+                />
                 New folder
               </button>
               <button
-                type="button"
+                type='button'
                 onClick={() =>
                   router.push(
-                    `${docsBase}/new${currentFolderId ? `?folder=${currentFolderId}` : ""}`
+                    `${docsBase}/new${currentFolderId ? `?folder=${currentFolderId}` : ''}`,
                   )
                 }
-                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                className='inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90'
               >
-                <IconPlus className="h-4 w-4" />
+                <IconPlus className='h-4 w-4' />
                 New document
               </button>
             </div>
@@ -373,12 +354,15 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
       />
 
       {breadcrumbs.length > 0 ? (
-        <DocsBreadcrumbs items={breadcrumbItems} className="mb-4" />
+        <DocsBreadcrumbs
+          items={breadcrumbItems}
+          className='mb-4'
+        />
       ) : null}
 
-      <div className="flex flex-col gap-4 sm:gap-5">
+      <div className='flex flex-col gap-4 sm:gap-5'>
         {!canCreate && (
-          <DocsPanel className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <DocsPanel className='px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400'>
             You don&apos;t have permission to create documents.
           </DocsPanel>
         )}
@@ -386,35 +370,38 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
         {isEmpty ? (
           <DocsEmptyState
             icon={currentFolderId ? IconFolder : IconFileText}
-            title={currentFolderId ? "This folder is empty" : "No documents yet"}
+            title={currentFolderId ? 'This folder is empty' : 'No documents yet'}
             description={
               canCreate
                 ? currentFolderId
-                  ? "Add a document or create a subfolder to get started."
-                  : "Get started by creating your first document or folder for the workspace."
-                : "Contact your workspace admin to publish documentation."
+                  ? 'Add a document or create a subfolder to get started.'
+                  : 'Get started by creating your first document or folder for the workspace.'
+                : 'Contact your workspace admin to publish documentation.'
             }
             action={
               canCreate ? (
-                <div className="flex flex-wrap items-center justify-center gap-2">
+                <div className='flex flex-wrap items-center justify-center gap-2'>
                   <button
-                    type="button"
+                    type='button'
                     onClick={openCreateFolder}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200"
+                    className='inline-flex items-center gap-1.5 rounded-xl bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'
                   >
-                    <IconFolder className="h-4 w-4" stroke={1.75} />
+                    <IconFolder
+                      className='h-4 w-4'
+                      stroke={1.75}
+                    />
                     Create folder
                   </button>
                   <button
-                    type="button"
+                    type='button'
                     onClick={() =>
                       router.push(
-                        `${docsBase}/new${currentFolderId ? `?folder=${currentFolderId}` : ""}`
+                        `${docsBase}/new${currentFolderId ? `?folder=${currentFolderId}` : ''}`,
                       )
                     }
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                    className='inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90'
                   >
-                    <IconPlus className="h-4 w-4" />
+                    <IconPlus className='h-4 w-4' />
                     Create document
                   </button>
                 </div>
@@ -422,7 +409,7 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             {folders.map((folder) => (
               <DocsFolderCard
                 key={folder.id}
@@ -440,41 +427,54 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
             {documents.map((doc) => {
               const external = isExternalContent(doc.content);
               return (
-                <DocsPanel key={doc.id} className="group p-4" onClick={() => openDoc(doc)}>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <DocsPanel
+                  key={doc.id}
+                  className='group p-4'
+                  onClick={() => openDoc(doc)}
+                >
+                  <div className='flex items-start gap-3'>
+                    <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10'>
                       {external ? (
-                        <IconLink className="h-5 w-5 text-primary" stroke={1.75} />
+                        <IconLink
+                          className='h-5 w-5 text-primary'
+                          stroke={1.75}
+                        />
                       ) : (
-                        <IconFileText className="h-5 w-5 text-primary" stroke={1.75} />
+                        <IconFileText
+                          className='h-5 w-5 text-primary'
+                          stroke={1.75}
+                        />
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="truncate text-sm font-semibold text-zinc-900 group-hover:text-primary dark:text-zinc-100">
+                    <div className='min-w-0 flex-1'>
+                      <div className='flex items-start justify-between gap-2'>
+                        <h3 className='truncate text-sm font-semibold text-zinc-900 group-hover:text-primary dark:text-zinc-100'>
                           {doc.name}
                         </h3>
                         {(canEdit || canDelete) && (
                           <button
-                            type="button"
+                            type='button'
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`${docsBase}/${doc.id}/edit`);
                             }}
-                            className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                            aria-label="Edit document"
+                            className='shrink-0 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+                            aria-label='Edit document'
                           >
-                            <IconPencil className="h-4 w-4" stroke={1.75} />
+                            <IconPencil
+                              className='h-4 w-4'
+                              stroke={1.75}
+                            />
                           </button>
                         )}
                       </div>
-                      <p className="mt-0.5 text-xs text-zinc-400">
-                        {external ? "External link" : "Markdown document"}
+                      <p className='mt-0.5 text-xs text-zinc-400'>
+                        {external ? 'External link' : 'Markdown document'}
                       </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
-                        <span>{doc.owner?.username ?? "Unknown"}</span>
-                        <span className="inline-flex items-center gap-1">
-                          <IconClock className="h-3.5 w-3.5" />
+                      <div className='mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400'>
+                        <span>{doc.owner?.username ?? 'Unknown'}</span>
+                        <span className='inline-flex items-center gap-1'>
+                          <IconClock className='h-3.5 w-3.5' />
                           {new Date(doc.updatedAt ?? doc.createdAt).toLocaleDateString()}
                         </span>
                       </div>
@@ -516,7 +516,7 @@ const DocsLibrary: pageWithLayout<pageProps> = ({
         open={!!deletingFolder}
         onClose={() => setDeletingFolder(null)}
         onConfirm={confirmDeleteFolder}
-        folderName={deletingFolder?.name ?? ""}
+        folderName={deletingFolder?.name ?? ''}
         loading={deleteFolderLoading}
       />
     </DocsPageShell>

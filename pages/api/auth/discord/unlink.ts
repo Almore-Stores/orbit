@@ -1,37 +1,44 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-// import { withAuth } from '@/lib/withSession';
-import prisma from '@/utils/database';
 import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
+import { invalidateUserProfileCache } from '@/utils/accountCache';
+import { validateCsrf } from '@/utils/csrf';
+import prisma from '@/utils/database';
+import type { NextApiResponse } from 'next';
 
 export default withAuth(handler);
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
-	if (req.method !== 'POST') {
-		return res.status(405).json({ error: 'Method not allowed' });
-	}
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-	if (!req.auth.userId) {
-		return res.status(401).json({ error: 'Not authenticated' });
-	}
+  if (!validateCsrf(req, res)) {
+    return res.status(403).json({ error: 'Invalid request origin' });
+  }
 
-	try {
-		const robloxUserId = BigInt(req.auth.userId);
+  if (!req.auth.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
 
-		const discordEntry = await prisma.discordUser.findFirst({
-			where: { robloxUserId },
-		});
+  try {
+    const robloxUserId = BigInt(req.auth.userId);
 
-		if (!discordEntry) {
-			return res.status(404).json({ error: 'No Discord account linked' });
-		}
+    const discordEntry = await prisma.discordUser.findFirst({
+      where: { robloxUserId },
+    });
 
-		await prisma.discordUser.delete({
-			where: { discordUserId: discordEntry.discordUserId },
-		});
+    if (!discordEntry) {
+      return res.status(404).json({ error: 'No Discord account linked' });
+    }
 
-		return res.status(200).json({ success: true });
-	} catch (err) {
-		console.error('Discord unlink error:', err);
-		return res.status(500).json({ error: 'Failed to unlink Discord account' });
-	}
+    await prisma.discordUser.delete({
+      where: { discordUserId: discordEntry.discordUserId },
+    });
+
+    await invalidateUserProfileCache(robloxUserId);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Discord unlink error:', err);
+    return res.status(500).json({ error: 'Failed to unlink Discord account' });
+  }
 }

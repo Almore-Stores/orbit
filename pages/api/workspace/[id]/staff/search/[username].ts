@@ -1,7 +1,7 @@
-import type { NextApiResponse } from "next";
-import prisma from "@/utils/database";
-import { withPermissionCheck } from "@/utils/permissionsManager";
-import { AuthenticatedRequest } from "@/lib/withAuth";
+import { AuthenticatedRequest } from '@/lib/withAuth';
+import prisma from '@/utils/database';
+import { withPermissionCheck } from '@/utils/permissionsManager';
+import type { NextApiResponse } from 'next';
 
 type Data = {
   success: boolean;
@@ -9,15 +9,12 @@ type Data = {
   users?: any;
 };
 
-export default withPermissionCheck(handler, ["view_members", "create_quotas"]);
+export default withPermissionCheck(handler, ['view_members', 'create_quotas']);
 
 export async function handler(req: AuthenticatedRequest, res: NextApiResponse<Data>) {
-  if (req.method !== "GET")
-    return res
-      .status(405)
-      .json({ success: false, error: "Method not allowed" });
-  if (!req.auth.userId)
-    return res.status(401).json({ success: false, error: "Not logged in" });
+  if (req.method !== 'GET')
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  if (!req.auth.userId) return res.status(401).json({ success: false, error: 'Not logged in' });
 
   try {
     const searchQuery = String(req.query.username).trim();
@@ -35,7 +32,7 @@ export async function handler(req: AuthenticatedRequest, res: NextApiResponse<Da
       where: {
         username: {
           contains: searchQuery,
-          mode: "insensitive",
+          mode: 'insensitive',
         },
         roles: {
           some: {
@@ -56,16 +53,13 @@ export async function handler(req: AuthenticatedRequest, res: NextApiResponse<Da
       return {
         userid: uid,
         username: user.username,
-        picture:
-          user.picture || `/api/user/${uid}/avatar/${uid}`,
+        picture: user.picture || `/api/user/${uid}/avatar/${uid}`,
       };
     });
 
     return res.status(200).json({ success: true, users: infoUsers });
   } catch (error: any) {
     console.error(error);
-    return res
-      .status(500)
-      .json({ success: false, error: "Something went wrong" });
+    return res.status(500).json({ success: false, error: 'Something went wrong' });
   }
 }

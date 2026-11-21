@@ -1,18 +1,19 @@
-import prisma from "./database";
-import cache from "./cache";
+import { AuthenticatedRequest, AuthHandler, withAuth } from '@/lib/withAuth';
+import * as cookie from 'cookie';
 import type {
   NextApiRequest,
   NextApiResponse,
   NextApiHandler,
   GetServerSidePropsContext,
-} from "next";
-import * as noblox from "noblox.js";
-import * as cookie from "cookie";
-import { getConfig } from "./configEngine";
-import { validateCsrf } from "./csrf";
-import { getThumbnail } from "./userinfoEngine";
-import { AuthenticatedRequest, AuthHandler, withAuth } from "@/lib/withAuth";
-import { getSessionByToken } from "./session";
+} from 'next';
+import * as noblox from 'noblox.js';
+
+import cache from './cache';
+import { getConfig } from './configEngine';
+import { validateCsrf } from './csrf';
+import prisma from './database';
+import { getSessionByToken } from './session';
+import { getThumbnail } from './userinfoEngine';
 
 const permissionsCache = new Map<string, { data: any; timestamp: number }>();
 const PERMISSIONS_CACHE_DURATION = 120000;
@@ -39,18 +40,12 @@ async function removeRoleFromUser(userid: bigint, roleId: string) {
       data: { roles: { disconnect: { id: roleId } } },
     })
     .catch((err: any) =>
-      console.error(
-        `[update-group] Disconnect role ${roleId} from ${userid} failed:`,
-        err,
-      ),
+      console.error(`[update-group] Disconnect role ${roleId} from ${userid} failed:`, err),
     );
   await prisma.roleMember
     .deleteMany({ where: { roleId, userId: userid } })
     .catch((err: any) =>
-      console.error(
-        `[update-group] Delete RoleMember ${roleId}/${userid} failed:`,
-        err,
-      ),
+      console.error(`[update-group] Delete RoleMember ${roleId}/${userid} failed:`, err),
     );
 }
 
@@ -66,9 +61,7 @@ async function retryNobloxRequest<T>(
       if (attempt > 0) {
         const delayMs = initialDelay * Math.pow(2, attempt - 1);
         console.log(
-          `[retryNobloxRequest] Retrying after ${delayMs}ms (attempt ${
-            attempt + 1
-          }/${maxRetries})`,
+          `[retryNobloxRequest] Retrying after ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
         );
         await delay(delayMs);
       }
@@ -80,14 +73,11 @@ async function retryNobloxRequest<T>(
       const isRateLimitError =
         error?.statusCode === 429 ||
         error?.statusCode === 401 ||
-        (error?.message &&
-          error.message.toLowerCase().includes("too many requests"));
+        (error?.message && error.message.toLowerCase().includes('too many requests'));
 
       if (isRateLimitError && attempt < maxRetries - 1) {
         console.log(
-          `[retryNobloxRequest] Rate limit hit, will retry (attempt ${
-            attempt + 1
-          }/${maxRetries})`,
+          `[retryNobloxRequest] Rate limit hit, will retry (attempt ${attempt + 1}/${maxRetries})`,
         );
         continue;
       }
@@ -104,16 +94,14 @@ async function retryNobloxRequest<T>(
 async function buildGroupCache(
   groupID: number,
   ranks: noblox.Role[],
-): Promise<
-  Map<number, { robloxRoleId: number; username: string; picture: string }>
-> {
+): Promise<Map<number, { robloxRoleId: number; username: string; picture: string }>> {
   const internalMap = new Map<
     number,
     { robloxRoleId: number; username: string; picture: string; _rank: number }
   >();
 
   const trackedRanks = ranks.filter((r) => r.rank !== 0);
-  const apiKey = await getConfig("roblox_opencloud", groupID);
+  const apiKey = await getConfig('roblox_opencloud', groupID);
 
   for (const rank of trackedRanks) {
     let pageToken: string | undefined;
@@ -122,10 +110,10 @@ async function buildGroupCache(
       await delay(250);
 
       const params = new URLSearchParams({
-        maxPageSize: "100",
+        maxPageSize: '100',
         filter: `role == 'groups/${groupID}/roles/${rank.id}'`,
       });
-      if (pageToken) params.set("pageToken", pageToken);
+      if (pageToken) params.set('pageToken', pageToken);
 
       let response: Response;
       try {
@@ -134,14 +122,12 @@ async function buildGroupCache(
             `https://apis.roblox.com/cloud/v2/groups/${groupID}/memberships?${params.toString()}`,
             {
               headers: {
-                "x-api-key": apiKey.key,
+                'x-api-key': apiKey.key,
               },
             },
           ).then((r) => {
             if (!r.ok) {
-              const err: any = new Error(
-                `Group memberships API returned ${r.status}`,
-              );
+              const err: any = new Error(`Group memberships API returned ${r.status}`);
               err.statusCode = r.status;
               throw err;
             }
@@ -149,21 +135,18 @@ async function buildGroupCache(
           }),
         );
       } catch (err: any) {
-        const msg: string = err?.message ?? "";
+        const msg: string = err?.message ?? '';
         if (
           err?.statusCode === 401 ||
           err?.statusCode === 403 ||
-          msg.toLowerCase().includes("unauthorized") ||
-          msg.toLowerCase().includes("forbidden")
+          msg.toLowerCase().includes('unauthorized') ||
+          msg.toLowerCase().includes('forbidden')
         ) {
           throw new Error(
             `Auth failure fetching memberships for role ${rank.id} — API key may be invalid or expired: ${msg}`,
           );
         }
-        console.warn(
-          `[buildGroupCache] Failed to fetch memberships for role ${rank.id}:`,
-          err,
-        );
+        console.warn(`[buildGroupCache] Failed to fetch memberships for role ${rank.id}:`, err);
         break;
       }
 
@@ -177,14 +160,14 @@ async function buildGroupCache(
       };
 
       for (const membership of body.groupMemberships ?? []) {
-        const userId = Number(membership.user?.split("/")[1]);
+        const userId = Number(membership.user?.split('/')[1]);
         if (!userId) continue;
         const existing = internalMap.get(userId);
         if (!existing || rank.rank > existing._rank) {
           internalMap.set(userId, {
             robloxRoleId: rank.id,
-            username: "",
-            picture: "",
+            username: '',
+            picture: '',
             _rank: rank.rank,
           });
         }
@@ -204,9 +187,9 @@ async function buildGroupCache(
 
     try {
       const response = await retryNobloxRequest(() =>
-        fetch("https://users.roblox.com/v1/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        fetch('https://users.roblox.com/v1/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userIds: batch, excludeBannedUsers: false }),
         }).then((r) => {
           if (!r.ok) {
@@ -225,16 +208,13 @@ async function buildGroupCache(
         if (entry) internalMap.set(user.id, { ...entry, username: user.name });
       }
     } catch (err) {
-      console.warn(
-        `[buildGroupCache] Bulk username fetch failed for batch at ${i}:`,
-        err,
-      );
+      console.warn(`[buildGroupCache] Bulk username fetch failed for batch at ${i}:`, err);
     }
 
     await delay(200);
 
     try {
-      const ids = batch.join(",");
+      const ids = batch.join(',');
       const response = await retryNobloxRequest(() =>
         fetch(
           `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${ids}&size=180x180&format=Png&isCircular=false`,
@@ -255,16 +235,12 @@ async function buildGroupCache(
       );
 
       for (const item of response.data) {
-        if (item.state !== "Completed" || !item.imageUrl) continue;
+        if (item.state !== 'Completed' || !item.imageUrl) continue;
         const entry = internalMap.get(item.targetId);
-        if (entry)
-          internalMap.set(item.targetId, { ...entry, picture: item.imageUrl });
+        if (entry) internalMap.set(item.targetId, { ...entry, picture: item.imageUrl });
       }
     } catch (err) {
-      console.warn(
-        `[buildGroupCache] Bulk avatar fetch failed for batch at ${i}:`,
-        err,
-      );
+      console.warn(`[buildGroupCache] Bulk avatar fetch failed for batch at ${i}:`, err);
     }
   }
 
@@ -280,36 +256,27 @@ async function buildGroupCache(
   return userRoleMap;
 }
 
-export function withPermissionCheck(
-  handler: AuthHandler,
-  permission?: string | string[],
-) {
+export function withPermissionCheck(handler: AuthHandler, permission?: string | string[]) {
   return withAuth(async (req: AuthenticatedRequest, res: NextApiResponse) => {
     if (!validateCsrf(req, res)) {
       return res.status(403).json({
         success: false,
-        error: "CSRF validation failed. Invalid origin or referer.",
+        error: 'CSRF validation failed. Invalid origin or referer.',
       });
     }
 
     const PLANETARY_CLOUD_URL = process.env.PLANETARY_CLOUD_URL;
     const PLANETARY_CLOUD_SERVICE_KEY = process.env.PLANETARY_CLOUD_SERVICE_KEY;
     if (PLANETARY_CLOUD_URL && PLANETARY_CLOUD_SERVICE_KEY?.length) {
-      if (
-        req.headers["x-planetary-cloud-service-key"] ===
-        PLANETARY_CLOUD_SERVICE_KEY
-      ) {
+      if (req.headers['x-planetary-cloud-service-key'] === PLANETARY_CLOUD_SERVICE_KEY) {
         return handler(req, res);
       }
     }
 
     const uid = req.auth.userId; // BigInt, from withAuth
-    if (!uid)
-      return res.status(401).json({ success: false, error: "Unauthorized" });
+    if (!uid) return res.status(401).json({ success: false, error: 'Unauthorized' });
     if (!req.query.id)
-      return res
-        .status(400)
-        .json({ success: false, error: "Missing required fields" });
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
 
     const workspaceId = parseInt(req.query.id as string);
     const cacheKey = `permissions_${uid}_${workspaceId}`;
@@ -323,7 +290,7 @@ export function withPermissionCheck(
       const permissions = Array.isArray(permission) ? permission : [permission];
       if (permissions.some((perm) => cachedData.permissions?.includes(perm)))
         return handler(req, res);
-      return res.status(401).json({ success: false, error: "Unauthorized" });
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
     const user = await prisma.user.findFirst({
@@ -333,8 +300,7 @@ export function withPermissionCheck(
         workspaceMemberships: { where: { workspaceGroupId: workspaceId } },
       },
     });
-    if (!user)
-      return res.status(401).json({ success: false, error: "Unauthorized" });
+    if (!user) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     let membership = user.workspaceMemberships[0];
     if (!membership && user.roles.length > 0) {
@@ -344,7 +310,7 @@ export function withPermissionCheck(
             workspaceGroupId: workspaceId,
             userId: Number(uid),
             joinDate: new Date(),
-            timezone: "UTC",
+            timezone: 'UTC',
           },
         });
       } catch {
@@ -360,8 +326,7 @@ export function withPermissionCheck(
       }
     }
 
-    if (!membership)
-      return res.status(401).json({ success: false, error: "Unauthorized" });
+    if (!membership) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const isAdmin = membership.isAdmin || false;
     const userrole = user.roles[0];
@@ -373,13 +338,11 @@ export function withPermissionCheck(
 
     if (isAdmin) return handler(req, res);
     if (!permission) return handler(req, res);
-    if (!userrole)
-      return res.status(401).json({ success: false, error: "Unauthorized" });
+    if (!userrole) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
     const permissions = Array.isArray(permission) ? permission : [permission];
-    if (permissions.some((perm) => userrole?.permissions?.includes(perm)))
-      return handler(req, res);
-    return res.status(401).json({ success: false, error: "Unauthorized" });
+    if (permissions.some((perm) => userrole?.permissions?.includes(perm))) return handler(req, res);
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
   });
 }
 
@@ -391,14 +354,12 @@ export function withPermissionCheckSsr(
     const { req, res, query } = context;
 
     // Read session token from cookie
-    const cookies = cookie.parse(req.headers.cookie || "");
+    const cookies = cookie.parse(req.headers.cookie || '');
     const token = cookies.session_token;
-    if (!token)
-      return { redirect: { destination: "/login", permanent: false } };
+    if (!token) return { redirect: { destination: '/login', permanent: false } };
 
     const session = await getSessionByToken(token);
-    if (!session)
-      return { redirect: { destination: "/login", permanent: false } };
+    if (!session) return { redirect: { destination: '/login', permanent: false } };
 
     const uid = session.userId;
 
@@ -407,15 +368,12 @@ export function withPermissionCheckSsr(
     const PLANETARY_CLOUD_URL = process.env.PLANETARY_CLOUD_URL;
     const PLANETARY_CLOUD_SERVICE_KEY = process.env.PLANETARY_CLOUD_SERVICE_KEY;
     if (PLANETARY_CLOUD_URL && PLANETARY_CLOUD_SERVICE_KEY?.length) {
-      if (
-        req.headers["x-planetary-cloud-service-key"] ===
-        PLANETARY_CLOUD_SERVICE_KEY
-      ) {
+      if (req.headers['x-planetary-cloud-service-key'] === PLANETARY_CLOUD_SERVICE_KEY) {
         return handler(context);
       }
     }
 
-    if (!query.id) return { redirect: { destination: "/", permanent: false } };
+    if (!query.id) return { redirect: { destination: '/', permanent: false } };
 
     const workspaceId = parseInt(query.id as string);
     const cacheKey = `permissions_${uid}_${workspaceId}`;
@@ -429,7 +387,7 @@ export function withPermissionCheckSsr(
       const permissions = Array.isArray(permission) ? permission : [permission];
       if (permissions.some((perm) => cachedData.permissions?.includes(perm)))
         return handler(context);
-      return { redirect: { destination: "/", permanent: false } };
+      return { redirect: { destination: '/', permanent: false } };
     }
 
     const user = await prisma.user.findFirst({
@@ -439,7 +397,7 @@ export function withPermissionCheckSsr(
         workspaceMemberships: { where: { workspaceGroupId: workspaceId } },
       },
     });
-    if (!user) return { redirect: { destination: "/", permanent: false } };
+    if (!user) return { redirect: { destination: '/', permanent: false } };
 
     let membership = user.workspaceMemberships[0];
     if (!membership && user.roles.length > 0) {
@@ -449,7 +407,7 @@ export function withPermissionCheckSsr(
             workspaceGroupId: workspaceId,
             userId: Number(uid),
             joinDate: new Date(),
-            timezone: "UTC",
+            timezone: 'UTC',
           },
         });
       } catch {
@@ -465,8 +423,7 @@ export function withPermissionCheckSsr(
       }
     }
 
-    if (!membership)
-      return { redirect: { destination: "/", permanent: false } };
+    if (!membership) return { redirect: { destination: '/', permanent: false } };
 
     const isAdmin = membership.isAdmin || false;
     const userrole = user.roles[0];
@@ -478,14 +435,13 @@ export function withPermissionCheckSsr(
 
     if (isAdmin) return handler(context);
     if (!permission) return handler(context);
-    if (!userrole) return { redirect: { destination: "/", permanent: false } };
+    if (!userrole) return { redirect: { destination: '/', permanent: false } };
 
     const permissions = Array.isArray(permission) ? permission : [permission];
     const hasPermission = user.roles.some((role) =>
       permissions.some((perm) => role.permissions.includes(perm)),
     );
-    if (!hasPermission)
-      return { redirect: { destination: "/", permanent: false } };
+    if (!hasPermission) return { redirect: { destination: '/', permanent: false } };
 
     return handler(context);
   };
@@ -500,7 +456,7 @@ export async function checkGroupRoles(groupID: number) {
     const encGID = encodeURIComponent(safeGroupId);
 
     console.log(`[update-group] Starting sync for group ${safeGroupId}`);
-    const apiKey = await getConfig("roblox_opencloud", groupID);
+    const apiKey = await getConfig('roblox_opencloud', groupID);
     if (!apiKey?.key) {
       console.log(`No Roblox Open Cloud API key configured for workspace/group ${groupID}`);
       return;
@@ -508,20 +464,18 @@ export async function checkGroupRoles(groupID: number) {
     let successful = true;
 
     try {
-      const logoUrl = new URL("https://thumbnails.roblox.com/v1/groups/icons");
-      logoUrl.searchParams.set("groupIds", safeGroupId);
-      logoUrl.searchParams.set("size", "420x420");
-      logoUrl.searchParams.set("format", "Png");
+      const logoUrl = new URL('https://thumbnails.roblox.com/v1/groups/icons');
+      logoUrl.searchParams.set('groupIds', safeGroupId);
+      logoUrl.searchParams.set('size', '420x420');
+      logoUrl.searchParams.set('format', 'Png');
 
-      const groupUrl = new URL(
-        `https://apis.roblox.com/cloud/v2/groups/${encGID}`,
-      );
+      const groupUrl = new URL(`https://apis.roblox.com/cloud/v2/groups/${encGID}`);
       const [logoRes, groupRes] = await Promise.all([
         fetch(logoUrl.toString())
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
         fetch(groupUrl.toString(), {
-          headers: { "x-api-key": apiKey.key },
+          headers: { 'x-api-key': apiKey.key },
         })
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null),
@@ -574,16 +528,14 @@ export async function checkGroupRoles(groupID: number) {
           const fallback = await prisma.role.create({
             data: {
               workspaceGroupId: groupID,
-              name: "Default",
+              name: 'Default',
               permissions: [],
               groupRoles: [],
               isOwnerRole: false,
             },
           });
           availableRoles = [fallback];
-          console.log(
-            `[update-group] Created default fallback role for group ${groupID}`,
-          );
+          console.log(`[update-group] Created default fallback role for group ${groupID}`);
         }
 
         await Promise.allSettled(
@@ -617,13 +569,9 @@ export async function checkGroupRoles(groupID: number) {
 
           if (userRank) {
             const rankId = Number(userRank.rankId);
-            const matched = await retryNobloxRequest(() =>
-              noblox.getRole(groupID, rankId),
-            )
+            const matched = await retryNobloxRequest(() => noblox.getRole(groupID, rankId))
               .then((info) =>
-                availableRoles.find((r) =>
-                  (r.groupRoles ?? []).map(Number).includes(info.id),
-                ),
+                availableRoles.find((r) => (r.groupRoles ?? []).map(Number).includes(info.id)),
               )
               .catch(() => null);
             if (matched) targetRole = matched;
@@ -640,20 +588,14 @@ export async function checkGroupRoles(groupID: number) {
               },
             })
             .catch((err) =>
-              console.error(
-                `[update-group] Role swap failed for ${member.userid}:`,
-                err,
-              ),
+              console.error(`[update-group] Role swap failed for ${member.userid}:`, err),
             );
         }
 
         await prisma.role
           .delete({ where: { id: ownerRole.id } })
           .catch((err) =>
-            console.error(
-              `[update-group] Failed to delete owner role ${ownerRole.id}:`,
-              err,
-            ),
+            console.error(`[update-group] Failed to delete owner role ${ownerRole.id}:`, err),
           );
       }
 
@@ -666,51 +608,132 @@ export async function checkGroupRoles(groupID: number) {
       console.error(`[update-group] Failed to migrate owner roles:`, err);
       successful = false;
     }
+    const rolesUrl = new URL(`https://apis.roblox.com/cloud/v2/groups/${encGID}/roles`);
+    rolesUrl.searchParams.set('maxPageSize', '100');
 
-    const rolesUrl = new URL(
-      `https://apis.roblox.com/cloud/v2/groups/${encGID}/roles`,
-    );
-    rolesUrl.searchParams.set("maxPageSize", "20");
+    const rss: { id: number; rank: number; name: string }[] = [];
+    let pageToken: string | undefined;
 
-    const rss = await retryNobloxRequest(() =>
-      fetch(
-        rolesUrl.toString(),
-        {
-          headers: { "x-api-key": apiKey.key },
-        },
-      ).then(async (r) => {
-        if (!r.ok) {
-          const err: any = new Error(`Roles API returned ${r.status}`);
-          err.statusCode = r.status;
-          throw err;
+    do {
+      if (pageToken) {
+        rolesUrl.searchParams.set('pageToken', pageToken);
+      } else {
+        rolesUrl.searchParams.delete('pageToken');
+      }
+
+      const body = await retryNobloxRequest(async () => {
+        const response = await fetch(rolesUrl.toString(), {
+          headers: { 'x-api-key': apiKey.key },
+        });
+
+        if (!response.ok) {
+          const error: any = new Error(`Roles API returned ${response.status}`);
+          error.statusCode = response.status;
+          throw error;
         }
-        const body = (await r.json()) as {
-          groupRoles: Array<{ id: string; rank: number; displayName: string }>;
+
+        return response.json() as Promise<{
+          groupRoles: Array<{
+            id: string;
+            rank: number;
+            displayName: string;
+          }>;
           nextPageToken?: string;
-        };
-        // map to same shape noblox returned so downstream code stays the same
-        return body.groupRoles.map((r) => ({
-          id: Number(r.id),
-          rank: r.rank,
-          name: r.displayName,
-        }));
-      }),
-    );
-    if (!rss) {
-      console.log(
-        `[update-group] No roles found for group ${groupID}, aborting.`,
+        }>;
+      });
+
+      if (!Array.isArray(body.groupRoles)) {
+        throw new Error(`Invalid roles response for group ${groupID}; aborting sync`);
+      }
+
+      rss.push(
+        ...body.groupRoles.map((role) => ({
+          id: Number(role.id),
+          rank: role.rank,
+          name: role.displayName,
+        })),
       );
+
+      pageToken = body.nextPageToken || undefined;
+    } while (pageToken);
+
+    if (rss.length === 0) {
+      throw new Error(`No roles returned for group ${groupID}; aborting sync`);
+    }
+
+    if (!rss) {
+      console.log(`[update-group] No roles found for group ${groupID}, aborting.`);
       return;
     }
 
+    const existingRoles = await prisma.role.findMany({
+      where: {
+        workspaceGroupId: groupID,
+        isOwnerRole: false,
+      },
+      include: {
+        members: true,
+      },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      for (const role of existingRoles) {
+        for (const member of role.members) {
+          await tx.user.update({
+            where: {
+              userid: member.userid,
+            },
+            data: {
+              roles: {
+                disconnect: {
+                  id: role.id,
+                },
+              },
+            },
+          });
+        }
+
+        await tx.roleMember.deleteMany({
+          where: {
+            roleId: role.id,
+          },
+        });
+      }
+
+      await tx.role.deleteMany({
+        where: {
+          workspaceGroupId: groupID,
+          isOwnerRole: false,
+        },
+      });
+
+      for (const [index, groupRole] of rss
+        .filter((role) => role.name !== 'Guest')
+        .sort((a, b) => a.rank - b.rank)
+        .entries()) {
+        await tx.role.create({
+          data: {
+            workspaceGroupId: groupID,
+            name: groupRole.name,
+            groupRoles: [BigInt(groupRole.id)],
+            permissions: [],
+            position: index,
+            isOwnerRole: false,
+          },
+        });
+      }
+    });
+
     const [rs, config] = await Promise.all([
       prisma.role
-        .findMany({ where: { workspaceGroupId: groupID } })
+        .findMany({
+          where: { workspaceGroupId: groupID },
+        })
         .catch((err) => {
           console.error(`[update-group] Failed to fetch workspace roles:`, err);
           return [] as Awaited<ReturnType<typeof prisma.role.findMany>>;
         }),
-      getConfig("activity", groupID).catch(() => null),
+      getConfig('activity', groupID).catch(() => null),
     ]);
 
     const minTrackedRole = config?.role ?? 0;
@@ -721,12 +744,10 @@ export async function checkGroupRoles(groupID: number) {
     );
 
     groupCacheStore.delete(groupID);
-    const userRoleMap = await buildGroupCache(groupID, trackedRanks).catch(
-      () => {
-        successful = false;
-        return new Map<number, { robloxRoleId: number; username: string }>();
-      },
-    );
+    const userRoleMap = await buildGroupCache(groupID, trackedRanks).catch(() => {
+      successful = false;
+      return new Map<number, { robloxRoleId: number; username: string }>();
+    });
     const [usersWithRoles, allRoleMembers] = await Promise.all([
       prisma.user.findMany({
         where: { roles: { some: { workspaceGroupId: groupID } } },
@@ -746,9 +767,7 @@ export async function checkGroupRoles(groupID: number) {
       roleMemberIndex.set(`${rm.roleId}:${rm.userId}`, rm);
     }
 
-    const usersInDbIndex = new Map(
-      usersWithRoles.map((u) => [Number(u.userid), u]),
-    );
+    const usersInDbIndex = new Map(usersWithRoles.map((u) => [Number(u.userid), u]));
 
     console.log(
       `[update-group] Loaded ${usersWithRoles.length} users and ${allRoleMembers.length} role memberships from DB`,
@@ -771,10 +790,7 @@ export async function checkGroupRoles(groupID: number) {
               data: { username },
             })
             .catch((err) => {
-              console.error(
-                `[update-group] Username update failed for ${userId}:`,
-                err,
-              );
+              console.error(`[update-group] Username update failed for ${userId}:`, err);
               successful = false;
             });
         } else {
@@ -817,21 +833,13 @@ export async function checkGroupRoles(groupID: number) {
               },
             })
             .then((result) => {
-              if (
-                !result.joinDate ||
-                result.joinDate.getTime() === new Date().setSeconds(0, 0)
-              ) {
+              if (!result.joinDate || result.joinDate.getTime() === new Date().setSeconds(0, 0)) {
               } else {
-                console.log(
-                  `[update-group] Added user ${userId} to workspace ${groupID}`,
-                );
+                console.log(`[update-group] Added user ${userId} to workspace ${groupID}`);
               }
             })
             .catch((err) => {
-              console.error(
-                `[update-group] WorkspaceMember upsert failed for ${userId}:`,
-                err,
-              );
+              console.error(`[update-group] WorkspaceMember upsert failed for ${userId}:`, err);
               successful = false;
             });
         }
@@ -851,10 +859,7 @@ export async function checkGroupRoles(groupID: number) {
             },
           })
           .catch((err) => {
-            console.error(
-              `[update-group] WorkspaceMember upsert failed for ${userId}:`,
-              err,
-            );
+            console.error(`[update-group] WorkspaceMember upsert failed for ${userId}:`, err);
             successful = false;
           });
 
@@ -874,10 +879,7 @@ export async function checkGroupRoles(groupID: number) {
             },
           })
           .catch((err) => {
-            console.error(
-              `[update-group] Rank upsert failed for ${userId}:`,
-              err,
-            );
+            console.error(`[update-group] Rank upsert failed for ${userId}:`, err);
             successful = false;
           });
       } catch (err) {
@@ -915,18 +917,14 @@ export async function checkGroupRoles(groupID: number) {
             },
           })
           .catch((err) => {
-            console.error(
-              `[update-group] Rank update failed for ${user.userid}:`,
-              err,
-            );
+            console.error(`[update-group] Rank update failed for ${user.userid}:`, err);
             successful = false;
           });
       }
 
       for (const userRole of user.roles) {
         if (userRole.isOwnerRole) continue;
-        if (userRole.groupRoles === null || userRole.groupRoles === undefined)
-          continue;
+        if (userRole.groupRoles === null || userRole.groupRoles === undefined) continue;
 
         const rm = roleMemberIndex.get(`${userRole.id}:${user.userid}`);
         const isManual = rm?.manuallyAdded ?? false;
@@ -965,16 +963,13 @@ export async function checkGroupRoles(groupID: number) {
             continue;
           }
           console.log(
-            `[update-group] Removing role "${userRole.name}" from ${user.userid} — rank ${userRankData.robloxRoleId} not in [${groupRoleIds.join(", ")}]`,
+            `[update-group] Removing role "${userRole.name}" from ${user.userid} — rank ${userRankData.robloxRoleId} not in [${groupRoleIds.join(', ')}]`,
           );
           await removeRoleFromUser(user.userid, userRole.id);
 
           const remainingValid = user.roles.filter(
             (r) =>
-              !r.isOwnerRole &&
-              r.groupRoles &&
-              r.groupRoles.length > 0 &&
-              r.id !== userRole.id,
+              !r.isOwnerRole && r.groupRoles && r.groupRoles.length > 0 && r.id !== userRole.id,
           );
           if (remainingValid.length === 0) {
             console.log(
@@ -985,10 +980,7 @@ export async function checkGroupRoles(groupID: number) {
                 where: { workspaceGroupId: groupID, userId: user.userid },
               })
               .catch((err) => {
-                console.error(
-                  `[update-group] Dept cleanup failed for ${user.userid}:`,
-                  err,
-                );
+                console.error(`[update-group] Dept cleanup failed for ${user.userid}:`, err);
                 successful = false;
               });
           }
@@ -996,15 +988,23 @@ export async function checkGroupRoles(groupID: number) {
       }
     }
 
-    console.log(
-      `[update-group] ${successful ? "Completed" : "Failed"} sync for group ${groupID}`,
-    );
+    console.log(`[update-group] ${successful ? 'Completed' : 'Failed'} sync for group ${groupID}`);
+
     await prisma.workspace.update({
       where: {
         groupId: groupID,
       },
       data: {
         lastSyncedSuccessful: successful,
+      },
+    });
+
+    return await prisma.role.findMany({
+      where: {
+        workspaceGroupId: groupID,
+      },
+      orderBy: {
+        position: 'asc',
       },
     });
   } catch (err) {
@@ -1049,9 +1049,9 @@ export async function checkSpecificUser(userID: number | bigint) {
     if (!rankId) continue;
 
     await delay(300);
-    const rankInfo = await retryNobloxRequest(() =>
-      noblox.getRole(w.groupId, rankId),
-    ).catch(() => null);
+    const rankInfo = await retryNobloxRequest(() => noblox.getRole(w.groupId, rankId)).catch(
+      () => null,
+    );
     if (!rankInfo) continue;
     const rank = rankInfo.id;
 
@@ -1099,9 +1099,7 @@ export async function checkSpecificUser(userID: number | bigint) {
       });
     }
     if (role.isOwnerRole) {
-      console.log(
-        `[update-group] Skipping assignment of owner role ${role.id} to user ${userID}`,
-      );
+      console.log(`[update-group] Skipping assignment of owner role ${role.id} to user ${userID}`);
       continue;
     }
     await prisma.user.update({
@@ -1153,9 +1151,7 @@ export async function checkSpecificUser(userID: number | bigint) {
 
 const ROLE_SYNC_THROTTLE_SECONDS = 3600;
 
-export async function checkUserRolesOnLogin(
-  userID: number | bigint,
-): Promise<void> {
+export async function checkUserRolesOnLogin(userID: number | bigint): Promise<void> {
   try {
     const throttleKey = `roles:newsync:${userID}`;
     const alreadyRan = await cache.has(throttleKey);
@@ -1171,15 +1167,12 @@ export async function checkUserRolesOnLogin(
       cache.del(`user:${userID}:profile`),
       cache.del(`login:user:${userID}`),
     ]);
-    if (invalidations.some((result) => result.status === "rejected")) {
+    if (invalidations.some((result) => result.status === 'rejected')) {
       console.error(`[update-group] Cache invalidation failed for ${userID}`);
       return;
     }
     await cache.set(throttleKey, true, ROLE_SYNC_THROTTLE_SECONDS);
   } catch (err) {
-    console.error(
-      `[update-group] Role sync on login failed for ${userID}:`,
-      err,
-    );
+    console.error(`[update-group] Role sync on login failed for ${userID}:`, err);
   }
 }

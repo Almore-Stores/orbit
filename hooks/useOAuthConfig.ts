@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 type OAuthProvider = {
   available: boolean;
+  oauthOnly?: boolean;
   configured: {
     applicationId: boolean;
     applicationSecret: boolean;
@@ -46,38 +47,30 @@ export function useOAuthConfig() {
 
     async function load() {
       try {
-        const response = await fetch("/api/auth/config-check", {
+        const response = await fetch('/api/auth/config-check', {
           signal: controller.signal,
           headers: {
-            Accept: "application/json",
+            Accept: 'application/json',
           },
         });
 
         if (!response.ok) {
-          throw new Error(
-            `OAuth config request returned ${response.status}`,
-          );
+          throw new Error(`OAuth config request returned ${response.status}`);
         }
 
-        const data = (await response.json()) as OAuthConfig;
+        const data = (await response.json()) as Partial<OAuthConfig>;
 
         setConfig({
           discord: data.discord ?? DEFAULT_CONFIG.discord,
           google: data.google ?? DEFAULT_CONFIG.google,
-          oauthOnly: data.oauthOnly ?? false,
+          oauthOnly: data.oauthOnly ?? data.discord?.oauthOnly ?? data.google?.oauthOnly ?? false,
         });
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name === "AbortError"
-        ) {
+        if (error instanceof Error && error.name === 'AbortError') {
           return;
         }
 
-        console.error(
-          "[AUTH] Failed to fetch OAuth configuration:",
-          error,
-        );
+        console.error('[AUTH] Failed to fetch OAuth configuration:', error);
 
         setConfig(DEFAULT_CONFIG);
       } finally {

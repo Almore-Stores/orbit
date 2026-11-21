@@ -1,20 +1,15 @@
-import type { NextApiResponse } from "next";
-import prisma from "@/utils/database";
-import { AuthenticatedRequest, withAuth } from "@/lib/withAuth";
+import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
+import prisma from '@/utils/database';
+import type { NextApiResponse } from 'next';
 
-export default withAuth(async function handler(
-  req: AuthenticatedRequest,
-  res: NextApiResponse
-) {
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (!req.auth.userId) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
   const workspaceGroupId = parseInt(req.query.id as string, 10);
   if (!workspaceGroupId)
-    return res
-      .status(400)
-      .json({ success: false, error: "Invalid workspace id" });
+    return res.status(400).json({ success: false, error: 'Invalid workspace id' });
 
   const userid = Number(req.auth.userId);
   try {
@@ -52,7 +47,7 @@ export default withAuth(async function handler(
   const filtered = memberBirthdays
     .filter(
       (m: (typeof memberBirthdays)[number]) =>
-        (m.user.birthdayDay ?? 0) > 0 && (m.user.birthdayMonth ?? 0) > 0
+        (m.user.birthdayDay ?? 0) > 0 && (m.user.birthdayMonth ?? 0) > 0,
     )
     .map((m: (typeof memberBirthdays)[number]) => {
       const month = m.user.birthdayMonth as number;
@@ -61,9 +56,7 @@ export default withAuth(async function handler(
       if (next < new Date(todayY, today.getMonth(), today.getDate())) {
         next = new Date(todayY + 1, month - 1, day);
       }
-      const daysAway = Math.round(
-        (next.getTime() - today.getTime()) / 86400000
-      );
+      const daysAway = Math.round((next.getTime() - today.getTime()) / 86400000);
       return {
         userid: m.user.userid.toString(),
         username: m.user.username || m.user.userid.toString(),
@@ -73,10 +66,7 @@ export default withAuth(async function handler(
         _daysAway: daysAway,
       };
     })
-    .sort(
-      (a: { _daysAway: number }, b: { _daysAway: number }) =>
-        a._daysAway - b._daysAway
-    )
+    .sort((a: { _daysAway: number }, b: { _daysAway: number }) => a._daysAway - b._daysAway)
     .map(
       ({
         _daysAway,
@@ -88,7 +78,7 @@ export default withAuth(async function handler(
         picture: string | null;
         birthdayDay: number | null;
         birthdayMonth: number | null;
-      }) => rest
+      }) => rest,
     ); // strip helper
 
   res.json({ success: true, birthdays: filtered });

@@ -1,5 +1,5 @@
-import NodeCache from "node-cache";
-import { getRobloxUserInfo, getRobloxUsername } from "@/utils/roblox";
+import { getRobloxUserInfo, getRobloxUsername } from '@/utils/roblox';
+import NodeCache from 'node-cache';
 
 const cache = new NodeCache({ stdTTL: 300 });
 
@@ -7,8 +7,8 @@ const toNumber = (userId: number | bigint) => Number(userId);
 const key = (prefix: string, userId: number) => `${prefix}:${userId}`;
 
 async function getCachedUserInfo(userId: number) {
-  const usernameKey = key("username", userId);
-  const displayNameKey = key("displayname", userId);
+  const usernameKey = key('username', userId);
+  const displayNameKey = key('displayname', userId);
 
   const cachedUsername = cache.get<string>(usernameKey);
   const cachedDisplayName = cache.get<string>(displayNameKey);
@@ -32,10 +32,14 @@ export async function getDisplayName(userId: number | bigint): Promise<string> {
   return (await getCachedUserInfo(toNumber(userId))).displayName;
 }
 
-export function getThumbnail(
-  userId: number | bigint
-): string {
+export function getThumbnail(userId: number | bigint): string {
   return `/api/user/${Number(userId)}/avatar`;
+}
+
+export function clearUserCache(userId: number | bigint): void {
+  const id = toNumber(userId);
+  cache.del(key('username', id));
+  cache.del(key('displayname', id));
 }
 
 export { getRobloxUsername };

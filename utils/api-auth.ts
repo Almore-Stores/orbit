@@ -1,21 +1,50 @@
-import prisma from "@/utils/database"
+import cache from '@/utils/cache';
+import prisma from '@/utils/database';
 
 // Validate API key for a given workspace
 export async function validateApiKey(apiKey: string, workspaceId: string | number) {
-  if (!apiKey || !apiKey.startsWith("orbit_")) return null
+  if (!apiKey || !apiKey.startsWith('orbit_')) return null;
 
-  const key = await prisma.apiKey.findUnique({ where: { key: apiKey } })
-  if (!key) return null
+  const numericWorkspaceId =
+    typeof workspaceId === 'string' ? parseInt(workspaceId, 10) : workspaceId;
 
-  if (key.expiresAt && new Date(key.expiresAt) < new Date()) return null
+  if (!numericWorkspaceId) return null;
 
-  const numericWorkspaceId = typeof workspaceId === 'string' ? parseInt(workspaceId, 10) : workspaceId
-  if (!numericWorkspaceId || key.workspaceGroupId !== numericWorkspaceId) return null
+  const cacheKey = `apikey:${apiKey}`;
 
-  prisma.apiKey.update({
-    where: { id: key.id },
-    data: { lastUsed: new Date() }
-  }).catch(() => {})
+  const key = await cache.swr(
+    cacheKey,
+    () =>
+      prisma.apiKey.findUnique({
+        where: {
+          key: apiKey,
+        },
+      }),
+    {
+      freshFor: 30,
+      staleFor: 300,
+    },
+  );
 
-  return key
+  if (!key) return null;
+
+  if (key.expiresAt && key.expiresAt < new Date()) {
+    await cache.del(cacheKey);
+    return null;
+  }
+
+  if (key.workspaceGroupId !== numericWorkspaceId) return null;
+
+  void prisma.apiKey
+    .update({
+      where: {
+        id: key.id,
+      },
+      data: {
+        lastUsed: new Date(),
+      },
+    })
+    .catch(() => {});
+
+  return key;
 }

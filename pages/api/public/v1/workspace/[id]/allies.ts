@@ -1,18 +1,18 @@
-import type { NextApiRequest, NextApiResponse } from "next"
-import prisma from "@/utils/database"
-import { validateApiKey } from "@/utils/api-auth"
-import { withKey } from "@/lib/withAuth"
+import { withKey } from '@/lib/withAuth';
+import { validateApiKey } from '@/utils/api-auth';
+import prisma from '@/utils/database';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default withKey(handler);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") return res.status(405).json({ success: false, error: "Method not allowed" })
+  if (req.method !== 'GET')
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const workspaceId = Number.parseInt(req.query.id as string)
-  if (!workspaceId) return res.status(400).json({ success: false, error: "Missing workspace ID" })
+  const workspaceId = Number.parseInt(req.query.id as string);
+  if (!workspaceId) return res.status(400).json({ success: false, error: 'Missing workspace ID' });
 
   try {
-
     // Fetch allies
     const allies = await prisma.ally.findMany({
       where: {
@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
         allyVisits: {
           orderBy: {
-            time: "desc",
+            time: 'desc',
           },
           take: 5,
           include: {
@@ -42,7 +42,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           },
         },
       },
-    })
+    });
 
     const formattedAllies = allies.map((ally) => ({
       id: ally.id,
@@ -65,15 +65,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           thumbnail: visit.host.picture,
         },
       })),
-    }))
+    }));
 
     return res.status(200).json({
       success: true,
       allies: formattedAllies,
       total: formattedAllies.length,
-    })
+    });
   } catch (error) {
-    console.error("Error in public API:", error)
-    return res.status(500).json({ success: false, error: "Internal server error" })
+    console.error('Error in public API:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }

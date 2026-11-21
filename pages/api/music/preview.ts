@@ -1,6 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
 import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
+import axios from 'axios';
+import type { NextApiRequest, NextApiResponse } from 'next';
 // import { withAuth } from '@/lib/withSession';
 
 export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
@@ -34,7 +34,7 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
       responseType: 'stream',
       headers: {
         'User-Agent': 'Mozilla/5.0',
-        'Accept': 'audio/*,*/*',
+        Accept: 'audio/*,*/*',
       },
       timeout: 15000,
       maxRedirects: 0,

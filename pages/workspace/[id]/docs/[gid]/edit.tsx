@@ -1,34 +1,34 @@
-import type { pageWithLayout } from "@/layoutTypes";
-import { workspacestate } from "@/state";
-import Workspace from "@/layouts/workspace";
-import { useRecoilState } from "recoil";
-import { useState } from "react";
-import { IconCheck, IconWorld, IconTrash } from "@tabler/icons-react";
-import { useRouter } from "next/router";
-import { withPermissionCheckSsr } from "@/utils/permissionsManager";
-import axios from "axios";
-import prisma from "@/utils/database";
-import { FormProvider, useForm } from "react-hook-form";
-import { GetServerSideProps } from "next";
-import { toast } from "react-hot-toast";
-import { AuthenticatedRequest } from "@/lib/withAuth";
-import {
-  DocEditorPage,
-  DocWritingSurface,
-  DocEditorSidebar,
-} from "@/components/docs/DocEditorPage";
-import {
-  DeleteDocumentModal,
-  ExternalLinkModal,
-  useExternalLinkModal,
-} from "@/components/docs/modals";
-import { MarkdownEditor } from "@/components/docs/MarkdownEditor";
-import { FolderPicker, type DocFolderOption } from "@/components/docs/folders";
 import {
   documentContentToMarkdown,
   getDocumentMode,
   isExternalContent,
-} from "@/components/docs/content";
+} from '@/components/docs/content';
+import {
+  DocEditorPage,
+  DocWritingSurface,
+  DocEditorSidebar,
+} from '@/components/docs/DocEditorPage';
+import { FolderPicker, type DocFolderOption } from '@/components/docs/folders';
+import { MarkdownEditor } from '@/components/docs/MarkdownEditor';
+import {
+  DeleteDocumentModal,
+  ExternalLinkModal,
+  useExternalLinkModal,
+} from '@/components/docs/modals';
+import Workspace from '@/layouts/workspace';
+import type { pageWithLayout } from '@/layoutTypes';
+import { AuthenticatedRequest } from '@/lib/withAuth';
+import { workspacestate } from '@/state';
+import prisma from '@/utils/database';
+import { withPermissionCheckSsr } from '@/utils/permissionsManager';
+import { IconCheck, IconWorld, IconTrash } from '@tabler/icons-react';
+import axios from 'axios';
+import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
+import { useState } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+import { toast } from 'react-hot-toast';
+import { useRecoilState } from 'recoil';
 
 export const getServerSideProps: GetServerSideProps = withPermissionCheckSsr(
   async (context) => {
@@ -47,26 +47,24 @@ export const getServerSideProps: GetServerSideProps = withPermissionCheckSsr(
     const membership = user?.workspaceMemberships?.[0];
     const isAdmin = membership?.isAdmin || false;
     const canEdit =
-      isAdmin ||
-      (user?.roles || []).some((r: any) => r.permissions?.includes("edit_docs"));
+      isAdmin || (user?.roles || []).some((r: any) => r.permissions?.includes('edit_docs'));
     const canDelete =
-      isAdmin ||
-      (user?.roles || []).some((r: any) => r.permissions?.includes("delete_docs"));
+      isAdmin || (user?.roles || []).some((r: any) => r.permissions?.includes('delete_docs'));
 
     const [roles, departments, folders, document] = await Promise.all([
       prisma.role.findMany({
         where: { workspaceGroupId: Number(id) },
-        orderBy: { isOwnerRole: "desc" },
+        orderBy: { isOwnerRole: 'desc' },
       }),
       prisma.department.findMany({
         where: { workspaceGroupId: Number(id) },
-        orderBy: { name: "asc" },
+        orderBy: { name: 'asc' },
         select: { id: true, name: true, color: true },
       }),
       prisma.documentFolder.findMany({
         where: { workspaceGroupId: Number(id) },
         select: { id: true, name: true, parentId: true, icon: true },
-        orderBy: { name: "asc" },
+        orderBy: { name: 'asc' },
       }),
       prisma.document.findUnique({
         where: { id: gid as string },
@@ -82,16 +80,14 @@ export const getServerSideProps: GetServerSideProps = withPermissionCheckSsr(
         departments: JSON.parse(JSON.stringify(departments)),
         folders: JSON.parse(JSON.stringify(folders)),
         document: JSON.parse(
-          JSON.stringify(document, (_k, v) =>
-            typeof v === "bigint" ? v.toString() : v
-          )
+          JSON.stringify(document, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
         ),
         canEdit,
         canDelete,
       },
     };
   },
-  ["edit_docs", "delete_docs"]
+  ['edit_docs', 'delete_docs'],
 );
 
 const EditDocument: pageWithLayout<any> = ({
@@ -107,21 +103,21 @@ const EditDocument: pageWithLayout<any> = ({
   const form = useForm({ defaultValues: { name: document.name } });
   const externalLink = useExternalLinkModal();
 
-  const [mode] = useState<"internal" | "external">(() => getDocumentMode(document.content));
+  const [mode] = useState<'internal' | 'external'>(() => getDocumentMode(document.content));
   const [markdownContent, setMarkdownContent] = useState(() =>
-    documentContentToMarkdown(document.content)
+    documentContentToMarkdown(document.content),
   );
   const [externalUrl, setExternalUrl] = useState(() =>
-    isExternalContent(document.content) ? document.content.url : ""
+    isExternalContent(document.content) ? document.content.url : '',
   );
   const [selectedRoles, setSelectedRoles] = useState<string[]>(
-    document.roles.map((r: any) => r.id)
+    document.roles.map((r: any) => r.id),
   );
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>(
-    document.departments?.map((d: any) => d.id) ?? []
+    document.departments?.map((d: any) => d.id) ?? [],
   );
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(
-    document.folderId ?? null
+    document.folderId ?? null,
   );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -134,7 +130,7 @@ const EditDocument: pageWithLayout<any> = ({
   const toggleRole = (roleId: string) => {
     if (!canEdit) return;
     setSelectedRoles((prev) =>
-      prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
+      prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId],
     );
   };
 
@@ -143,7 +139,7 @@ const EditDocument: pageWithLayout<any> = ({
     setSelectedDepartments((prev) =>
       prev.includes(departmentId)
         ? prev.filter((d) => d !== departmentId)
-        : [...prev, departmentId]
+        : [...prev, departmentId],
     );
   };
 
@@ -152,17 +148,17 @@ const EditDocument: pageWithLayout<any> = ({
 
     const name = form.getValues().name?.trim();
     if (!name) {
-      form.setError("name", { type: "required", message: "Title is required" });
+      form.setError('name', { type: 'required', message: 'Title is required' });
       return;
     }
 
     let content: unknown =
-      mode === "external"
+      mode === 'external'
         ? { external: true, url: externalUrl.trim(), title: form.getValues().name }
         : markdownContent;
 
-    if (mode === "external" && !externalUrl.trim()) {
-      form.setError("name", { type: "custom", message: "External URL required" });
+    if (mode === 'external' && !externalUrl.trim()) {
+      form.setError('name', { type: 'custom', message: 'External URL required' });
       return;
     }
 
@@ -174,12 +170,12 @@ const EditDocument: pageWithLayout<any> = ({
         departments: selectedDepartments,
         folderId: selectedFolderId,
       });
-      toast.success("Document saved");
-      router.push(mode === "external" ? docsHref : docHref);
+      toast.success('Document saved');
+      router.push(mode === 'external' ? docsHref : docHref);
     } catch (err: any) {
-      form.setError("name", {
-        type: "custom",
-        message: err?.response?.data?.error || "Failed to save",
+      form.setError('name', {
+        type: 'custom',
+        message: err?.response?.data?.error || 'Failed to save',
       });
     }
   };
@@ -187,19 +183,16 @@ const EditDocument: pageWithLayout<any> = ({
   const deleteDoc = async () => {
     setDeleting(true);
     try {
-      await axios.post(
-        `/api/workspace/${workspace.groupId}/guides/${document.id}/delete`,
-        {}
-      );
-      toast.success("Document deleted");
+      await axios.post(`/api/workspace/${workspace.groupId}/guides/${document.id}/delete`, {});
+      toast.success('Document deleted');
       router.push(docsHref);
     } catch {
-      toast.error("Failed to delete");
+      toast.error('Failed to delete');
       setDeleting(false);
     }
   };
 
-  const titleValue = form.watch("name") ?? "";
+  const titleValue = form.watch('name') ?? '';
 
   return (
     <>
@@ -207,30 +200,36 @@ const EditDocument: pageWithLayout<any> = ({
         <DocEditorPage
           backHref={docHref}
           actions={
-            <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
               {canDelete && (
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setShowDeleteModal(true)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
+                  className='inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10'
                 >
-                  <IconTrash className="h-4 w-4" stroke={1.75} />
+                  <IconTrash
+                    className='h-4 w-4'
+                    stroke={1.75}
+                  />
                 </button>
               )}
               {canEdit && (
                 <button
-                  type="button"
+                  type='button'
                   onClick={form.handleSubmit(updateDoc)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                  className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary/90'
                 >
-                  <IconCheck className="h-4 w-4" stroke={2} />
+                  <IconCheck
+                    className='h-4 w-4'
+                    stroke={2}
+                  />
                   Save
                 </button>
               )}
             </div>
           }
           sidebar={
-            <div className="space-y-4">
+            <div className='space-y-4'>
               <FolderPicker
                 folders={folders as DocFolderOption[]}
                 value={selectedFolderId}
@@ -252,34 +251,33 @@ const EditDocument: pageWithLayout<any> = ({
           <DocWritingSurface
             title={titleValue}
             onTitleChange={(v) =>
-              form.setValue("name", v, { shouldValidate: true, shouldDirty: true })
+              form.setValue('name', v, { shouldValidate: true, shouldDirty: true })
             }
             titleError={
-              form.formState.errors.name
-                ? String(form.formState.errors.name.message)
-                : undefined
+              form.formState.errors.name ? String(form.formState.errors.name.message) : undefined
             }
             titleDisabled={!canEdit}
-            titlePlaceholder={
-              mode === "external" ? "Link title" : "Untitled document"
-            }
+            titlePlaceholder={mode === 'external' ? 'Link title' : 'Untitled document'}
             footer={
-              mode === "external" ? (
-                <div className="flex items-center gap-2">
-                  <IconWorld className="h-4 w-4 shrink-0 text-zinc-400" stroke={1.75} />
+              mode === 'external' ? (
+                <div className='flex items-center gap-2'>
+                  <IconWorld
+                    className='h-4 w-4 shrink-0 text-zinc-400'
+                    stroke={1.75}
+                  />
                   <input
-                    type="url"
+                    type='url'
                     value={externalUrl}
                     onChange={(e) => setExternalUrl(e.target.value)}
                     disabled={!canEdit}
-                    placeholder="https://docs.example.com"
-                    className="w-full border-0 bg-transparent text-sm text-zinc-600 placeholder-zinc-300 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-zinc-300 dark:placeholder-zinc-600"
+                    placeholder='https://docs.example.com'
+                    className='w-full border-0 bg-transparent text-sm text-zinc-600 placeholder-zinc-300 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-zinc-300 dark:placeholder-zinc-600'
                   />
                 </div>
               ) : undefined
             }
           >
-            {mode === "internal" ? (
+            {mode === 'internal' ? (
               <MarkdownEditor
                 value={markdownContent}
                 onChange={setMarkdownContent}
@@ -287,7 +285,7 @@ const EditDocument: pageWithLayout<any> = ({
                 disabled={!canEdit}
               />
             ) : (
-              <p className="px-4 text-sm text-zinc-400 sm:px-6">
+              <p className='px-4 text-sm text-zinc-400 sm:px-6'>
                 This document links to an external page.
               </p>
             )}

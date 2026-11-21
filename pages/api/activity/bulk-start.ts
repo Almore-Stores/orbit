@@ -1,6 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getConfig } from "@/utils/configEngine";
-import cache from "@/utils/cache";
+import cache from '@/utils/cache';
+import { getConfig } from '@/utils/configEngine';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ActivityConfig = {
   minTrackedRank?: number;
@@ -14,14 +14,11 @@ type Data = {
   data?: ActivityConfig;
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<Data>,
-) {
-  if (req.method !== "GET") {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
+  if (req.method !== 'GET') {
     return res.status(405).json({
       success: false,
-      error: "Method not allowed",
+      error: 'Method not allowed',
     });
   }
 
@@ -30,7 +27,7 @@ export default async function handler(
   if (!id || isNaN(Number(id))) {
     return res.status(400).json({
       success: false,
-      error: "Invalid workspace id",
+      error: 'Invalid workspace id',
     });
   }
 
@@ -41,7 +38,7 @@ export default async function handler(
     let activityConfig = await cache.get<ActivityConfig>(cacheKey);
 
     if (activityConfig === null) {
-      const config = await getConfig("activity", workspaceId);
+      const config = await getConfig('activity', workspaceId);
 
       activityConfig = {
         minTrackedRank: config?.role,
@@ -57,11 +54,11 @@ export default async function handler(
       data: activityConfig,
     });
   } catch (err) {
-    console.error("Unexpected error in /api/activity/config:", err);
+    console.error('Unexpected error in /api/activity/config:', err);
 
     return res.status(500).json({
       success: false,
-      error: "Internal server error",
+      error: 'Internal server error',
     });
   }
 }

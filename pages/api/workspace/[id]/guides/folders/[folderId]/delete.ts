@@ -1,19 +1,19 @@
-import type { NextApiResponse } from "next";
-import prisma from "@/utils/database";
-import { withPermissionCheck } from "@/utils/permissionsManager";
-import { logAudit } from "@/utils/logs";
-import { AuthenticatedRequest } from "@/lib/withAuth";
+import { AuthenticatedRequest } from '@/lib/withAuth';
+import prisma from '@/utils/database';
+import { logAudit } from '@/utils/logs';
+import { withPermissionCheck } from '@/utils/permissionsManager';
+import type { NextApiResponse } from 'next';
 
 type Data = {
   success: boolean;
   error?: string;
 };
 
-export default withPermissionCheck(handler, "delete_docs");
+export default withPermissionCheck(handler, 'delete_docs');
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse<Data>) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   const workspaceId = parseInt(req.query.id as string);
@@ -24,7 +24,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse<Data>) {
   });
 
   if (!folder) {
-    return res.status(404).json({ success: false, error: "Folder not found" });
+    return res.status(404).json({ success: false, error: 'Folder not found' });
   }
 
   await prisma.documentFolder.delete({ where: { id: folderId } });
@@ -33,9 +33,9 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse<Data>) {
     await logAudit(
       workspaceId,
       Number(req.auth.userId),
-      "document.folder.delete",
+      'document.folder.delete',
       `folder:${folder.name}`,
-      { id: folder.id, name: folder.name, parentId: folder.parentId }
+      { id: folder.id, name: folder.name, parentId: folder.parentId },
     );
   } catch {}
 

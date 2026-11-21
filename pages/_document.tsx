@@ -1,20 +1,35 @@
-import { Html, Head, Main, NextScript } from "next/document";
+import { Html, Head, Main, NextScript } from 'next/document';
 
 export default function Document() {
   return (
-    <Html lang="en" className="dark">
+    <Html
+      lang='en'
+      className='dark'
+    >
       <Head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
-          name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
+          name='apple-mobile-web-app-capable'
+          content='yes'
         />
-        <meta name="apple-mobile-web-app-title" content="Orbit" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/favicon.png" />
+        <meta
+          name='apple-mobile-web-app-status-bar-style'
+          content='black-translucent'
+        />
+        <meta
+          name='apple-mobile-web-app-title'
+          content='Orbit'
+        />
+        <meta
+          name='mobile-web-app-capable'
+          content='yes'
+        />
+        <link
+          rel='apple-touch-icon'
+          href='/favicon.png'
+        />
 
         <meta
-          httpEquiv="Content-Security-Policy"
+          httpEquiv='Content-Security-Policy'
           content={
             "default-src 'self'; " +
             "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
@@ -29,11 +44,17 @@ export default function Document() {
           }
         />
 
-        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
-        <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
         <meta
-          httpEquiv="Referrer-Policy"
-          content="strict-origin-when-cross-origin"
+          httpEquiv='X-Content-Type-Options'
+          content='nosniff'
+        />
+        <meta
+          httpEquiv='X-XSS-Protection'
+          content='1; mode=block'
+        />
+        <meta
+          httpEquiv='Referrer-Policy'
+          content='strict-origin-when-cross-origin'
         />
       </Head>
 

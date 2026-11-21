@@ -1,6 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
 import { AuthenticatedRequest, withAuth } from '@/lib/withAuth';
+import axios from 'axios';
+import type { NextApiRequest, NextApiResponse } from 'next';
 // import { withAuth } from '@/lib/withSession';
 
 export type TrackResult = {
@@ -19,7 +19,7 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
   if (!q) return res.json({ results: [] });
 
   const response = await axios.get(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=8`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=8`,
   );
 
   const results: TrackResult[] = (response.data.results ?? [])

@@ -36,8 +36,8 @@ model workspace {
   externalServices     workspaceExternalServices?
   members              workspaceMember[]
   policyLinks          PolicyShareableLink[]
-  stickyAnnouncements  StickyAnnouncement[]
   staffResignations    staffResignation[]
+  promotionRecommendations promotionRecommendation[]
 }
 
 model config {
@@ -101,6 +101,10 @@ model user {
   quotaCustomCompletions   QuotaCustomCompletion[] @relation("QuotaCompletionUser")
   quotaCompletionsReviewed QuotaCustomCompletion[] @relation("QuotaCompletionReviewer")
   quotaUsers               QuotaUser[]
+  promotionRecommendationsGiven    promotionRecommendation[] @relation("RecommendationRecommender")
+  promotionRecommendationsReceived promotionRecommendation[] @relation("RecommendationTarget")
+  promotionRecommendationsReviewed promotionRecommendation[] @relation("RecommendationReviewer")
+  media                     media[]
 }
 
 model AuthSession {
@@ -275,25 +279,13 @@ model wallPost {
   updatedAt        DateTime  @updatedAt
   workspaceGroupId Int
   authorId         BigInt
-  image            String?
+  mediaId          String?   @db.Uuid
   author           user      @relation(fields: [authorId], references: [userid])
   workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])
-}
-
-model StickyAnnouncement {
-  id               Int       @id @default(autoincrement())
-  workspaceGroupId Int
-  title            String
-  subtitle         String?
-  sections         Json // Array of {title: string, content: string}
-  editorId         BigInt?
-  editorUsername   String?
-  editorPicture    String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])
-
-  @@unique([workspaceGroupId])
+  media            media?    @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  @@index([workspaceGroupId, createdAt(sort: Desc)])
+  @@index([authorId])
+  @@index([mediaId])
 }
 
 model AuditLog {
@@ -743,4 +735,50 @@ model PolicyShareableLink {
   @@index([documentId])
   @@index([workspaceGroupId])
   @@index([createdById])
+}
+
+model promotionRecommendation {
+  id               String    @id @unique @default(uuid()) @db.Uuid
+  workspaceGroupId Int
+  recommenderId    BigInt
+  targetId         BigInt
+  recommenderRank  Int
+  targetRank       Int
+  reason           String
+  status           String    @default("pending")
+  reviewerId       BigInt?
+  reviewReason     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  reviewedAt       DateTime?
+
+  workspace        workspace @relation(fields: [workspaceGroupId], references: [groupId])
+  recommender      user      @relation("RecommendationRecommender", fields: [recommenderId], references: [userid])
+  target           user      @relation("RecommendationTarget", fields: [targetId], references: [userid])
+  reviewer         user?     @relation("RecommendationReviewer", fields: [reviewerId], references: [userid], onDelete: SetNull)
+
+  @@index([workspaceGroupId, status])
+  @@index([workspaceGroupId, targetId])
+  @@index([workspaceGroupId, recommenderId])
+  @@index([recommenderId])
+  @@index([targetId])
+  @@index([reviewerId])
+}
+
+model media {
+  id           String   @id @default(uuid()) @db.Uuid
+  filename     String   @unique
+  originalName String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  sha256       String
+  uploadedById BigInt?
+  uploadedBy   user?    @relation(fields: [uploadedById], references: [userid], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  wallPosts wallPost[]
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@index([sha256])
 }

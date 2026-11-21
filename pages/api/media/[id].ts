@@ -1,113 +1,88 @@
-import type { NextApiResponse } from "next";
-import { withInstanceAuth, AuthenticatedRequest } from "@/lib/withAuth";
-import prisma from "@/utils/database";
-import fs from "fs/promises";
-import path from "path";
-import cache from "@/utils/cache";
+import fs from 'fs';
+import fsPromises from 'fs/promises';
 
-type Data = {
-  success: boolean;
-  error?: string;
-  media?: any;
+import { getMedia, getMediaPathForFile } from '@/utils/media';
+import { getCachedMedia, setCachedMedia } from '@/utils/mediaCache';
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export const config = {
+  api: {
+    responseLimit: false,
+  },
 };
 
-export default withInstanceAuth(handler);
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
 
-async function handler(
-  req: AuthenticatedRequest,
-  res: NextApiResponse<Data>,
-) {
-  const { id } = req.query;
+  if (!id) {
+    return res.status(400).end();
+  }
+  if (req.method === 'GET') {
+    return serveMedia(id, req, res);
+  }
 
-  if (!id || Array.isArray(id)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid media id",
-    });
+  res.setHeader('Allow', 'GET');
+
+  return res.status(405).end();
+}
+
+async function serveMedia(id: string, req: NextApiRequest, res: NextApiResponse) {
+  let media = await getCachedMedia(id);
+  if (!media) {
+    const databaseMedia = await getMedia(id);
+
+    if (!databaseMedia) {
+      return res.status(404).end();
+    }
+
+    media = databaseMedia;
+
+    await setCachedMedia(id, media);
+  }
+
+  let filePath: string;
+
+  try {
+    filePath = getMediaPathForFile(media.filename);
+  } catch {
+    return res.status(404).end();
   }
 
   try {
-    if (req.method === "GET") {
-      const key = `media:${id}`;
+    const stat = await fsPromises.stat(filePath);
 
-      const cached = await cache.get(key);
-
-      if (cached) {
-        return res.status(200).json({
-          success: true,
-          media: cached,
-        });
-      }
-
-      const media = await prisma.media.findUnique({
-        where: {
-          id,
-        },
-      });
-
-      if (!media) {
-        return res.status(404).json({
-          success: false,
-          error: "Media not found",
-        });
-      }
-
-      await cache.set(key, media, 60 * 60 * 24 * 30);
-
-      return res.status(200).json({
-        success: true,
-        media,
-      });
+    if (!stat.isFile()) {
+      return res.status(404).end();
     }
 
-    if (req.method === "DELETE") {
-      const media = await prisma.media.findUnique({
-        where: {
-          id,
-        },
-      });
+    const etag = `"${media.sha256}"`;
 
-      if (!media) {
-        return res.status(404).json({
-          success: false,
-          error: "Media not found",
-        });
-      }
-
-      if (media.uploadedBy !== req.auth.userId) {
-        return res.status(403).json({
-          success: false,
-          error: "You cannot delete this media",
-        });
-      }
-
-      await Promise.all([
-        fs
-          .unlink(path.join(process.cwd(), "public", media.url))
-          .catch(() => {}),
-        prisma.media.delete({
-          where: {
-            id,
-          },
-        }),
-        cache.del(`media:${id}`),
-      ]);
-
-      return res.status(200).json({
-        success: true,
-      });
+    res.setHeader('Content-Type', media.mimeType);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Content-Disposition', `inline; filename="${media.filename}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'none'; img-src 'self'; style-src 'none'; script-src 'none'; frame-src 'none'",
+    );
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
     }
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', (error) => {
+      console.error('[MEDIA] Stream failed:', error);
 
-    return res.status(405).json({
-      success: false,
-      error: "Method not allowed",
+      if (!res.headersSent) {
+        res.status(404).end();
+      } else {
+        res.destroy();
+      }
     });
-  } catch (error) {
-    console.error("Media API error:", error);
 
-    return res.status(500).json({
-      success: false,
-      error: "Request failed",
-    });
+    stream.pipe(res);
+  } catch {
+    return res.status(404).end();
   }
 }

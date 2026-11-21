@@ -1,9 +1,10 @@
-import * as crypto from "crypto";
-import prisma from "@/utils/database";
-import { UAParser } from "ua-parser-js";
-import axios from "axios";
-import * as net from "net";
-import cache from "@/utils/cache";
+import * as crypto from 'crypto';
+import * as net from 'net';
+
+import cache from '@/utils/cache';
+import prisma from '@/utils/database';
+import axios from 'axios';
+import { UAParser } from 'ua-parser-js';
 
 interface IpapiRes {
   country_name: string;
@@ -27,7 +28,7 @@ const GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 function normalizeIp(rawIp: string): string {
   const trimmed = rawIp.trim();
-  const mappedV4Prefix = "::ffff:";
+  const mappedV4Prefix = '::ffff:';
   if (trimmed.toLowerCase().startsWith(mappedV4Prefix)) {
     return trimmed.slice(mappedV4Prefix.length);
   }
@@ -35,25 +36,25 @@ function normalizeIp(rawIp: string): string {
 }
 
 function isPrivateOrLocalIp(ip: string): boolean {
-  if (ip === "::1" || ip === "127.0.0.1") return true;
+  if (ip === '::1' || ip === '127.0.0.1') return true;
 
   if (net.isIP(ip) === 4) {
     return (
-      ip.startsWith("10.") ||
-      ip.startsWith("192.168.") ||
+      ip.startsWith('10.') ||
+      ip.startsWith('192.168.') ||
       /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
-      ip.startsWith("127.") ||
-      ip.startsWith("169.254.")
+      ip.startsWith('127.') ||
+      ip.startsWith('169.254.')
     );
   }
 
   if (net.isIP(ip) === 6) {
     const lower = ip.toLowerCase();
     return (
-      lower === "::1" ||
-      lower.startsWith("fc") ||
-      lower.startsWith("fd") ||
-      lower.startsWith("fe80:")
+      lower === '::1' ||
+      lower.startsWith('fc') ||
+      lower.startsWith('fd') ||
+      lower.startsWith('fe80:')
     );
   }
 
@@ -82,17 +83,11 @@ async function lookupGeo(ipAddress?: string): Promise<GeoResult> {
   }
 
   try {
-    const geoUrl = new URL(
-      `/${encodeURIComponent(safeIp)}/json/`,
-      "https://ipapi.co",
-    );
+    const geoUrl = new URL(`/${encodeURIComponent(safeIp)}/json/`, 'https://ipapi.co');
     const res = await axios.get<IpapiRes>(geoUrl.toString(), { timeout: 2000 });
 
     if ((res.data as any).error) {
-      console.warn(
-        "ipapi.co returned an error payload:",
-        (res.data as any).reason,
-      );
+      console.warn('ipapi.co returned an error payload:', (res.data as any).reason);
       return empty;
     }
 
@@ -108,23 +103,23 @@ async function lookupGeo(ipAddress?: string): Promise<GeoResult> {
 
     return geo;
   } catch (err) {
-    console.error("ipapi.co lookup failed, continuing without geo data:", err);
+    console.error('ipapi.co lookup failed, continuing without geo data:', err);
     return empty;
   }
 }
 
 function generateToken(): string {
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = crypto.randomBytes(32).toString('hex');
   return `DONOTSHARE_${token}`;
 }
 
 function hashToken(token: string): string {
-  const cleanToken = token.replace(/^DONOTSHARE_/i, "");
-  return crypto.createHash("sha256").update(cleanToken).digest("hex");
+  const cleanToken = token.replace(/^DONOTSHARE_/i, '');
+  return crypto.createHash('sha256').update(cleanToken).digest('hex');
 }
 
 function getKey() {
-  return crypto.createHash("sha256").update(SESSION_SECRET).digest();
+  return crypto.createHash('sha256').update(SESSION_SECRET).digest();
 }
 
 function encrypt(value?: string | null): string | null {
@@ -132,44 +127,33 @@ function encrypt(value?: string | null): string | null {
 
   const iv = crypto.randomBytes(16);
 
-  const cipher = crypto.createCipheriv("aes-256-gcm", getKey(), iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getKey(), iv);
 
-  const encrypted = Buffer.concat([
-    cipher.update(value, "utf8"),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
 
   const authTag = cipher.getAuthTag();
 
-  return [
-    iv.toString("hex"),
-    authTag.toString("hex"),
-    encrypted.toString("hex"),
-  ].join(":");
+  return [iv.toString('hex'), authTag.toString('hex'), encrypted.toString('hex')].join(':');
 }
 
 function decrypt(value?: string | null): string | null {
   if (!value) return null;
-  const parts = value.split(":");
+  const parts = value.split(':');
   if (parts.length !== 3) return value;
 
   const [ivHex, tagHex, encryptedHex] = parts;
 
   try {
-    const decipher = crypto.createDecipheriv(
-      "aes-256-gcm",
-      getKey(),
-      Buffer.from(ivHex, "hex"),
-    );
+    const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(), Buffer.from(ivHex, 'hex'));
 
-    decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
 
     const decrypted = Buffer.concat([
-      decipher.update(Buffer.from(encryptedHex, "hex")),
+      decipher.update(Buffer.from(encryptedHex, 'hex')),
       decipher.final(),
     ]);
 
-    return decrypted.toString("utf8");
+    return decrypted.toString('utf8');
   } catch {
     return null;
   }
@@ -188,21 +172,15 @@ function parseUA(userAgent?: string) {
   const result = parser.getResult();
 
   return {
-    browser:
-      [result.browser.name, result.browser.version].filter(Boolean).join(" ") ||
-      null,
+    browser: [result.browser.name, result.browser.version].filter(Boolean).join(' ') || null,
 
-    os: [result.os.name, result.os.version].filter(Boolean).join(" ") || null,
+    os: [result.os.name, result.os.version].filter(Boolean).join(' ') || null,
 
-    device: result.device.type ?? "desktop",
+    device: result.device.type ?? 'desktop',
   };
 }
 
-async function createSession(
-  userId: bigint,
-  ipAddress?: string,
-  userAgent?: string,
-) {
+async function createSession(userId: bigint, ipAddress?: string, userAgent?: string) {
   const rawToken = generateToken();
 
   const { browser, os, device } = parseUA(userAgent);
@@ -230,12 +208,10 @@ async function createSession(
 
   setImmediate(async () => {
     try {
-      const { checkUserRolesOnLogin } = await import(
-        "@/utils/permissionsManager"
-      );
+      const { checkUserRolesOnLogin } = await import('@/utils/permissionsManager');
       await checkUserRolesOnLogin(userId);
     } catch (err) {
-      console.error("[createSession] Role sync on login failed:", err);
+      console.error('[createSession] Role sync on login failed:', err);
     }
   });
 
@@ -258,7 +234,7 @@ async function getSessionByToken(token: string) {
   }>(cacheKey);
 
   if (cached) {
-    if (cached.expiresAt < Date.now()) {
+    if (cached.expiresAt <= Date.now()) {
       await cache.del(cacheKey);
       return null;
     }
@@ -282,16 +258,19 @@ async function getSessionByToken(token: string) {
     return null;
   }
 
-  if (session.expiresAt < new Date()) {
-    await prisma.authSession
-      .delete({
-        where: {
-          token: hashedToken,
-        },
-      })
-      .catch(() => null);
+  if (session.expiresAt.getTime() <= Date.now()) {
+    await Promise.all([
+      prisma.authSession
+        .delete({
+          where: {
+            token: hashedToken,
+          },
+        })
+        .catch(() => null),
 
-    await cache.del(cacheKey);
+      cache.del(cacheKey),
+    ]);
+
     return null;
   }
 
@@ -301,13 +280,15 @@ async function getSessionByToken(token: string) {
     userAgent: decrypt(session.userAgent),
   };
 
+  const ttl = Math.max(1, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000));
+
   await cache.set(
     cacheKey,
     {
       session: result,
       expiresAt: session.expiresAt.getTime(),
     },
-    Math.max(1, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000)),
+    ttl,
   );
 
   return {
@@ -318,7 +299,7 @@ async function getSessionByToken(token: string) {
 
 async function refreshSession(token: string, days = 30) {
   const isValidDontShare = /^DONOTSHARE_[a-f0-9]{64}$/i.test(token);
-  if (!isValidDontShare) throw new Error("Invalid token format");
+  if (!isValidDontShare) throw new Error('Invalid token format');
 
   const hashedToken = hashToken(token);
 
@@ -336,7 +317,7 @@ async function refreshSession(token: string, days = 30) {
 
 async function rotateSessionToken(token: string) {
   const isValidDontShare = /^DONOTSHARE_[a-f0-9]{64}$/i.test(token);
-  if (!isValidDontShare) throw new Error("Invalid token format");
+  if (!isValidDontShare) throw new Error('Invalid token format');
 
   const oldHash = hashToken(token);
   const cacheKey = `session:${oldHash}`;
@@ -387,18 +368,42 @@ async function forceDeleteSession(id: string) {
       },
     })
     .catch((err) => {
-      console.error("Error deleting session:", err);
+      console.error('Error deleting session:', err);
     });
 }
 
 async function deleteAllUserSessions(userId: bigint) {
-  return prisma.authSession.deleteMany({
-    where: { userId },
+  const sessions = await prisma.authSession.findMany({
+    where: {
+      userId,
+    },
+    select: {
+      token: true,
+    },
   });
+  const result = await prisma.authSession.deleteMany({
+    where: {
+      userId,
+    },
+  });
+  await Promise.all(sessions.map((session) => cache.del(`session:${session.token}`)));
+  return result;
 }
 
 async function deleteOtherSessions(userId: bigint, sid: string) {
-  return prisma.authSession.deleteMany({
+  const sessions = await prisma.authSession.findMany({
+    where: {
+      userId,
+      NOT: {
+        id: sid,
+      },
+    },
+    select: {
+      token: true,
+    },
+  });
+
+  const result = await prisma.authSession.deleteMany({
     where: {
       userId,
       NOT: {
@@ -406,12 +411,16 @@ async function deleteOtherSessions(userId: bigint, sid: string) {
       },
     },
   });
+
+  await Promise.all(sessions.map((session) => cache.del(`session:${session.token}`)));
+
+  return result;
 }
 
 async function listActiveSessions(userId: bigint) {
   const sessions = await prisma.authSession.findMany({
     where: { userId, expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
     select: {
       id: true,
       browser: true,
@@ -436,9 +445,7 @@ async function listActiveSessions(userId: bigint) {
         userAgent: decrypt(session.userAgent),
       });
     } catch {
-      await prisma.authSession
-        .delete({ where: { id: session.id } })
-        .catch(() => null);
+      await prisma.authSession.delete({ where: { id: session.id } }).catch(() => null);
     }
   }
 

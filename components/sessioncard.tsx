@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
-import clsx from "clsx";
+import { sessionsPanelShadow } from '@/components/sessions/shell';
+import type { SessionColors } from '@/hooks/useSessionColors';
+import { loginState, workspacestate } from '@/state';
+import { canAssignUsers, canClaimSelf, canHostSession } from '@/utils/sessionPermissions';
 import {
   IconX,
   IconCalendarEvent,
@@ -12,17 +14,15 @@ import {
   IconUserCheck,
   IconBan,
   IconAlertTriangle,
-} from "@tabler/icons-react";
-import axios from "axios";
-import { useRouter } from "next/router";
-import toast from "react-hot-toast";
-import { useRecoilValue } from "recoil";
-import { loginState, workspacestate } from "@/state";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import type { SessionColors } from "@/hooks/useSessionColors";
-import { canAssignUsers, canClaimSelf, canHostSession } from "@/utils/sessionPermissions";
-import { sessionsPanelShadow } from "@/components/sessions/shell";
+} from '@tabler/icons-react';
+import axios from 'axios';
+import clsx from 'clsx';
+import { useRouter } from 'next/router';
+import React, { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
+import ReactMarkdown from 'react-markdown';
+import { useRecoilValue } from 'recoil';
+import rehypeSanitize from 'rehype-sanitize';
 
 // Mobile detection utility
 const isMobile = () => {
@@ -31,26 +31,26 @@ const isMobile = () => {
 };
 
 const BG_COLORS = [
-  "bg-rose-300",
-  "bg-lime-300",
-  "bg-teal-200",
-  "bg-amber-300",
-  "bg-rose-200",
-  "bg-lime-200",
-  "bg-green-100",
-  "bg-red-100",
-  "bg-yellow-200",
-  "bg-amber-200",
-  "bg-emerald-300",
-  "bg-green-300",
-  "bg-red-300",
-  "bg-emerald-200",
-  "bg-green-200",
-  "bg-red-200",
+  'bg-rose-300',
+  'bg-lime-300',
+  'bg-teal-200',
+  'bg-amber-300',
+  'bg-rose-200',
+  'bg-lime-200',
+  'bg-green-100',
+  'bg-red-100',
+  'bg-yellow-200',
+  'bg-amber-200',
+  'bg-emerald-300',
+  'bg-green-300',
+  'bg-red-300',
+  'bg-emerald-200',
+  'bg-green-200',
+  'bg-red-200',
 ];
 
 function getRandomBg(userid: string, username?: string) {
-  const key = `${userid ?? ""}:${username ?? ""}`;
+  const key = `${userid ?? ''}:${username ?? ''}`;
   let hash = 5381;
   for (let i = 0; i < key.length; i++) {
     hash = ((hash << 5) - hash) ^ key.charCodeAt(i);
@@ -62,12 +62,12 @@ function getRandomBg(userid: string, username?: string) {
 function sessionAvatarSrc(
   userid: string | undefined,
   picture: string | undefined,
-  workspaceId?: number
+  workspaceId?: number,
 ) {
   if (workspaceId && userid) {
     return `/api/user/${userid}/avatar`;
   }
-  return picture || "/default-avatar.jpg";
+  return picture || '/default-avatar.jpg';
 }
 
 function SessionSection({
@@ -81,29 +81,23 @@ function SessionSection({
 }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-center gap-2">
-        {Icon ? <Icon className="h-4 w-4 text-zinc-400" stroke={1.75} /> : null}
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+      <div className='mb-2.5 flex items-center gap-2'>
+        {Icon ? (
+          <Icon
+            className='h-4 w-4 text-zinc-400'
+            stroke={1.75}
+          />
+        ) : null}
+        <h3 className='text-sm font-semibold text-zinc-900 dark:text-zinc-100'>{title}</h3>
       </div>
       {children}
     </section>
   );
 }
 
-function SessionInset({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function SessionInset({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={clsx(
-        "rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/40",
-        className
-      )}
-    >
+    <div className={clsx('rounded-xl bg-zinc-50 p-4 dark:bg-zinc-800/40', className)}>
       {children}
     </div>
   );
@@ -111,20 +105,20 @@ function SessionInset({
 
 function SessionBadge({
   children,
-  variant = "default",
+  variant = 'default',
 }: {
   children: React.ReactNode;
-  variant?: "live" | "status" | "type" | "default" | "danger" | "muted";
+  variant?: 'live' | 'status' | 'type' | 'default' | 'danger' | 'muted';
 }) {
   return (
     <span
       className={clsx(
-        "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium",
-        variant === "live" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-        variant === "status" && "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-        variant === "danger" && "bg-red-500/10 text-red-600 dark:text-red-400",
-        variant === "muted" && "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
-        variant === "default" && "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium',
+        variant === 'live' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        variant === 'status' && 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+        variant === 'danger' && 'bg-red-500/10 text-red-600 dark:text-red-400',
+        variant === 'muted' && 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
+        variant === 'default' && 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
       )}
     >
       {children}
@@ -165,7 +159,7 @@ const SessionModal: React.FC<SessionModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isCancelExpanded, setIsCancelExpanded] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
+  const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [isUncancelling, setIsUncancelling] = useState(false);
   const router = useRouter();
@@ -173,11 +167,11 @@ const SessionModal: React.FC<SessionModalProps> = ({
   const workspace = useRecoilValue(workspacestate);
 
   const defaultColors: SessionColors = {
-    recurring: "bg-blue-500",
-    shift: "bg-green-500",
-    training: "bg-yellow-500",
-    event: "bg-purple-500",
-    other: "bg-zinc-500",
+    recurring: 'bg-blue-500',
+    shift: 'bg-green-500',
+    training: 'bg-yellow-500',
+    event: 'bg-purple-500',
+    other: 'bg-zinc-500',
   };
 
   const effectiveColors: SessionColors = sessionColors || defaultColors;
@@ -185,9 +179,9 @@ const SessionModal: React.FC<SessionModalProps> = ({
   const getSessionTypeColor = (sessionType: string | null | undefined) => {
     if (!sessionType) return effectiveColors.other;
     const type = sessionType.toLowerCase();
-    if (type === "shift") return effectiveColors.shift;
-    if (type === "training") return effectiveColors.training;
-    if (type === "event") return effectiveColors.event;
+    if (type === 'shift') return effectiveColors.shift;
+    if (type === 'training') return effectiveColors.training;
+    if (type === 'event') return effectiveColors.event;
     return effectiveColors.other;
   };
 
@@ -196,10 +190,10 @@ const SessionModal: React.FC<SessionModalProps> = ({
   };
 
   const getTextColorForBackground = (bgColor: string) => {
-    if (bgColor.includes("yellow") || bgColor.includes("orange-400")) {
-      return "text-zinc-800 dark:text-zinc-900";
+    if (bgColor.includes('yellow') || bgColor.includes('orange-400')) {
+      return 'text-zinc-800 dark:text-zinc-900';
     }
-    return "text-white";
+    return 'text-white';
   };
 
   const refreshSessionData = async () => {
@@ -211,25 +205,24 @@ const SessionModal: React.FC<SessionModalProps> = ({
     if (!cancelReason.trim()) return;
     try {
       const workspaceIdRaw = Array.isArray(router.query.id) ? router.query.id[0] : router.query.id;
-      const workspaceId = typeof workspaceIdRaw === "string" ? workspaceIdRaw : "";
+      const workspaceId = typeof workspaceIdRaw === 'string' ? workspaceIdRaw : '';
       if (!/^[A-Za-z0-9_-]{1,64}$/.test(workspaceId)) {
-        toast.error("Invalid workspace id");
+        toast.error('Invalid workspace id');
         return;
       }
 
       setIsCancelling(true);
-      await axios.patch(
-        `/api/workspace/${workspaceId}/sessions/${session.id}/cancel`,
-        { reason: cancelReason.trim() }
-      );
+      await axios.patch(`/api/workspace/${workspaceId}/sessions/${session.id}/cancel`, {
+        reason: cancelReason.trim(),
+      });
       session.cancelled = true;
       session.cancellationReason = cancelReason.trim();
       setIsCancelExpanded(false);
-      setCancelReason("");
-      toast.success("Session cancelled");
+      setCancelReason('');
+      toast.success('Session cancelled');
       refreshSessionData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to cancel session");
+      toast.error(error?.response?.data?.error || 'Failed to cancel session');
     } finally {
       setIsCancelling(false);
     }
@@ -238,21 +231,19 @@ const SessionModal: React.FC<SessionModalProps> = ({
   const handleUncancelSession = async () => {
     try {
       const workspaceIdRaw = Array.isArray(router.query.id) ? router.query.id[0] : router.query.id;
-      const workspaceId = typeof workspaceIdRaw === "string" ? workspaceIdRaw : "";
+      const workspaceId = typeof workspaceIdRaw === 'string' ? workspaceIdRaw : '';
       if (!/^[A-Za-z0-9_-]{1,64}$/.test(workspaceId)) {
-        toast.error("Invalid workspace id");
+        toast.error('Invalid workspace id');
         return;
       }
 
       setIsUncancelling(true);
-      await axios.delete(
-        `/api/workspace/${workspaceId}/sessions/${session.id}/cancel`,
-      );
+      await axios.delete(`/api/workspace/${workspaceId}/sessions/${session.id}/cancel`);
       session.cancelled = false;
-      toast.success("Session uncancelled");
+      toast.success('Session uncancelled');
       refreshSessionData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to uncancel session");
+      toast.error(error?.response?.data?.error || 'Failed to uncancel session');
     } finally {
       setIsUncancelling(false);
     }
@@ -268,9 +259,11 @@ const SessionModal: React.FC<SessionModalProps> = ({
     const userHasAssignPermission = canAssignUsers(workspace.yourPermission, session.type);
     const userHasHostPermission = canHostSession(workspace.yourPermission, session.type);
     const isAssigningToSelf = username.toLowerCase() === login.username.toLowerCase();
-    const isRemovingSelf = !username.trim() && session.owner?.username?.toLowerCase() === login.username.toLowerCase();
-    const isRemovingOther = !username.trim() && session.owner?.username?.toLowerCase() !== login.username.toLowerCase();
-    
+    const isRemovingSelf =
+      !username.trim() && session.owner?.username?.toLowerCase() === login.username.toLowerCase();
+    const isRemovingOther =
+      !username.trim() && session.owner?.username?.toLowerCase() !== login.username.toLowerCase();
+
     if (!canManage) {
       if (username.trim()) {
         if (!userHasAssignPermission && !(userHasHostPermission && isAssigningToSelf)) return;
@@ -283,9 +276,7 @@ const SessionModal: React.FC<SessionModalProps> = ({
     try {
       setIsSubmitting(true);
       const user = username.trim()
-        ? availableUsers.find(
-            (u) => u.username.toLowerCase() === username.toLowerCase()
-          )
+        ? availableUsers.find((u) => u.username.toLowerCase() === username.toLowerCase())
         : null;
 
       if (username.trim() && !user) {
@@ -293,61 +284,47 @@ const SessionModal: React.FC<SessionModalProps> = ({
         return;
       }
 
-      await axios.put(
-        `/api/workspace/${router.query.id}/sessions/${session.id}/update-host`,
-        {
-          ownerId: user ? user.userid : null,
-        }
-      );
+      await axios.put(`/api/workspace/${router.query.id}/sessions/${session.id}/update-host`, {
+        ownerId: user ? user.userid : null,
+      });
 
-      await axios.post(
-        `/api/workspace/${router.query.id}/sessions/${session.id}/logs`,
-        {
-          action: username.trim() ? "host_assigned" : "host_unassigned",
-          targetId: user ? user.userid : session.ownerId,
-          metadata: {},
-        }
-      );
+      await axios.post(`/api/workspace/${router.query.id}/sessions/${session.id}/logs`, {
+        action: username.trim() ? 'host_assigned' : 'host_unassigned',
+        targetId: user ? user.userid : session.ownerId,
+        metadata: {},
+      });
 
       toast.success(
-        username.trim()
-          ? "Host assigned successfully"
-          : "Host unassigned successfully"
+        username.trim() ? 'Host assigned successfully' : 'Host unassigned successfully',
       );
       refreshSessionData();
 
       session.owner = user || null;
       session.ownerId = user ? user.userid : null;
     } catch (error: any) {
-      console.error("Host claim error:", error);
-      toast.error(
-        error?.response?.data?.error || "Failed to update host assignment"
-      );
+      console.error('Host claim error:', error);
+      toast.error(error?.response?.data?.error || 'Failed to update host assignment');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSlotClaim = async (
-    roleId: string,
-    slot: number,
-    username: string
-  ) => {
+  const handleSlotClaim = async (roleId: string, slot: number, username: string) => {
     const userHasAssignPermission = canAssignUsers(workspace.yourPermission, session.type);
     const userHasClaimPermission = canClaimSelf(workspace.yourPermission, session.type);
     const isAssigningToSelf = username.toLowerCase() === login.username.toLowerCase();
-    
+
     const currentAssignment = session.users?.find(
-      (u: any) => u.roleID === roleId && u.slot === slot
+      (u: any) => u.roleID === roleId && u.slot === slot,
     );
     const assignedUser = currentAssignment
-      ? availableUsers.find(
-          (user: any) => user.userid === currentAssignment.userid.toString()
-        )
+      ? availableUsers.find((user: any) => user.userid === currentAssignment.userid.toString())
       : null;
-    
-    const isRemovingSelf = !username.trim() && assignedUser?.username?.toLowerCase() === login.username.toLowerCase();
-    const isRemovingOther = !username.trim() && assignedUser?.username?.toLowerCase() !== login.username.toLowerCase();
+
+    const isRemovingSelf =
+      !username.trim() && assignedUser?.username?.toLowerCase() === login.username.toLowerCase();
+    const isRemovingOther =
+      !username.trim() && assignedUser?.username?.toLowerCase() !== login.username.toLowerCase();
 
     if (!canManage) {
       if (username.trim()) {
@@ -363,7 +340,7 @@ const SessionModal: React.FC<SessionModalProps> = ({
 
       if (username.trim()) {
         const user = availableUsers.find(
-          (u) => u.username.toLowerCase() === username.toLowerCase()
+          (u) => u.username.toLowerCase() === username.toLowerCase(),
         );
 
         if (!user) {
@@ -371,72 +348,54 @@ const SessionModal: React.FC<SessionModalProps> = ({
           return;
         }
 
-        await axios.post(
-          `/api/workspace/${router.query.id}/sessions/${session.id}/claim-role`,
-          {
-            userId: user.userid,
-            roleId,
-            slot,
-            action: "claim",
-          }
-        );
+        await axios.post(`/api/workspace/${router.query.id}/sessions/${session.id}/claim-role`, {
+          userId: user.userid,
+          roleId,
+          slot,
+          action: 'claim',
+        });
 
-        const roleSlot = session.sessionType.slots?.find(
-          (s: any) => s.id === roleId
-        );
-        await axios.post(
-          `/api/workspace/${router.query.id}/sessions/${session.id}/logs`,
-          {
-            action: "role_assigned",
-            targetId: user.userid,
-            metadata: {
-              roleName: roleSlot?.name || "Unknown Role",
-              slot: slot,
-            },
-          }
-        );
+        const roleSlot = session.sessionType.slots?.find((s: any) => s.id === roleId);
+        await axios.post(`/api/workspace/${router.query.id}/sessions/${session.id}/logs`, {
+          action: 'role_assigned',
+          targetId: user.userid,
+          metadata: {
+            roleName: roleSlot?.name || 'Unknown Role',
+            slot: slot,
+          },
+        });
 
-        toast.success("Role assigned successfully");
+        toast.success('Role assigned successfully');
       } else {
         const currentAssignment = session.users?.find(
-          (u: any) => u.roleID === roleId && u.slot === slot
+          (u: any) => u.roleID === roleId && u.slot === slot,
         );
 
-        await axios.post(
-          `/api/workspace/${router.query.id}/sessions/${session.id}/claim-role`,
-          {
-            roleId,
-            slot,
-            action: "unclaim",
-          }
-        );
+        await axios.post(`/api/workspace/${router.query.id}/sessions/${session.id}/claim-role`, {
+          roleId,
+          slot,
+          action: 'unclaim',
+        });
 
         if (currentAssignment) {
-          const roleSlot = session.sessionType.slots?.find(
-            (s: any) => s.id === roleId
-          );
-          await axios.post(
-            `/api/workspace/${router.query.id}/sessions/${session.id}/logs`,
-            {
-              action: "role_unassigned",
-              targetId: currentAssignment.userid,
-              metadata: {
-                roleName: roleSlot?.name || "Unknown Role",
-                slot: slot,
-              },
-            }
-          );
+          const roleSlot = session.sessionType.slots?.find((s: any) => s.id === roleId);
+          await axios.post(`/api/workspace/${router.query.id}/sessions/${session.id}/logs`, {
+            action: 'role_unassigned',
+            targetId: currentAssignment.userid,
+            metadata: {
+              roleName: roleSlot?.name || 'Unknown Role',
+              slot: slot,
+            },
+          });
         }
 
-        toast.success("Role unassigned successfully");
+        toast.success('Role unassigned successfully');
       }
 
       refreshSessionData();
     } catch (error: any) {
-      console.error("Role claim error:", error);
-      toast.error(
-        error?.response?.data?.error || "Failed to update role assignment"
-      );
+      console.error('Role claim error:', error);
+      toast.error(error?.response?.data?.error || 'Failed to update role assignment');
     } finally {
       setIsSubmitting(false);
     }
@@ -447,7 +406,7 @@ const SessionModal: React.FC<SessionModalProps> = ({
   if (colorsReady === false) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm lg:pl-[280px]"
+        className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm lg:pl-[280px]'
         onClick={(e) => {
           if (e.target === e.currentTarget && !isMobile()) {
             onClose();
@@ -456,11 +415,11 @@ const SessionModal: React.FC<SessionModalProps> = ({
       >
         <div
           className={clsx(
-            "w-full max-w-2xl rounded-2xl bg-white p-8 text-center dark:bg-zinc-900/95",
-            sessionsPanelShadow
+            'w-full max-w-2xl rounded-2xl bg-white p-8 text-center dark:bg-zinc-900/95',
+            sessionsPanelShadow,
           )}
         >
-          <div className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+          <div className='text-sm text-zinc-500 dark:text-zinc-400'>Loading…</div>
         </div>
       </div>
     );
@@ -471,18 +430,16 @@ const SessionModal: React.FC<SessionModalProps> = ({
   const now = new Date();
   const sessionStart = new Date(session.date);
   const sessionDuration = session.duration || 30;
-  const sessionEnd = new Date(
-    sessionStart.getTime() + sessionDuration * 60 * 1000
-  );
+  const sessionEnd = new Date(sessionStart.getTime() + sessionDuration * 60 * 1000);
   const isActive = now >= sessionStart && now <= sessionEnd;
   const isConcluded = now > sessionEnd;
-  
+
   const getCurrentStatus = () => {
-    if (isConcluded) return "Concluded";
-    
+    if (isConcluded) return 'Concluded';
+
     const minutesFromStart = (now.getTime() - sessionStart.getTime()) / 1000 / 60;
     const statues = (session.sessionType as any)?.statues || [];
-    
+
     const sortedStatues = [...statues].sort((a: any, b: any) => b.timeAfter - a.timeAfter);
     for (const status of sortedStatues) {
       if (minutesFromStart >= status.timeAfter) {
@@ -491,12 +448,12 @@ const SessionModal: React.FC<SessionModalProps> = ({
     }
     return null;
   };
-  
+
   const currentStatus = getCurrentStatus();
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm lg:pl-[280px]"
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm lg:pl-[280px]'
       onClick={(e) => {
         if (e.target === e.currentTarget && !isMobile()) {
           onClose();
@@ -505,37 +462,43 @@ const SessionModal: React.FC<SessionModalProps> = ({
     >
       <div
         className={clsx(
-          "flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white dark:bg-zinc-900/95",
-          sessionsPanelShadow
+          'flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white dark:bg-zinc-900/95',
+          sessionsPanelShadow,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800 sm:px-6 sm:py-5">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <IconCalendarEvent className="h-5 w-5 text-primary" stroke={1.75} />
+        <div className='flex items-start justify-between gap-4 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800 sm:px-6 sm:py-5'>
+          <div className='min-w-0 flex-1'>
+            <div className='flex items-start gap-3'>
+              <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10'>
+                <IconCalendarEvent
+                  className='h-5 w-5 text-primary'
+                  stroke={1.75}
+                />
               </div>
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-xl">
+              <div className='min-w-0'>
+                <h2 className='truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-xl'>
                   {session.name || session.sessionType.name}
                 </h2>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400">
-                  <IconClock className="h-3.5 w-3.5 shrink-0" stroke={1.75} />
-                  {sessionDate.toLocaleDateString()} at{" "}
+                <div className='mt-1 flex items-center gap-1.5 text-xs text-zinc-400'>
+                  <IconClock
+                    className='h-3.5 w-3.5 shrink-0'
+                    stroke={1.75}
+                  />
+                  {sessionDate.toLocaleDateString()} at{' '}
                   {sessionDate.toLocaleTimeString(undefined, {
-                    hour: "2-digit",
-                    minute: "2-digit",
+                    hour: '2-digit',
+                    minute: '2-digit',
                     hour12: true,
                   })}
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {isActive && <SessionBadge variant="live">Live</SessionBadge>}
+                <div className='mt-2 flex flex-wrap items-center gap-1.5'>
+                  {isActive && <SessionBadge variant='live'>Live</SessionBadge>}
                   {isRecurring && (
                     <span
                       className={clsx(
-                        "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium",
+                        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium',
                         getRecurringColor(),
-                        getTextColorForBackground(getRecurringColor())
+                        getTextColorForBackground(getRecurringColor()),
                       )}
                     >
                       Recurring
@@ -544,47 +507,50 @@ const SessionModal: React.FC<SessionModalProps> = ({
                   {session.type && (
                     <span
                       className={clsx(
-                        "inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium",
+                        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-medium',
                         getSessionTypeColor(session.type),
-                        getTextColorForBackground(getSessionTypeColor(session.type))
+                        getTextColorForBackground(getSessionTypeColor(session.type)),
                       )}
                     >
                       {session.type.charAt(0).toUpperCase() + session.type.slice(1)}
                     </span>
                   )}
                   {session.cancelled && (
-                    <SessionBadge variant="danger">
-                      <IconBan className="mr-1 h-3 w-3" />
+                    <SessionBadge variant='danger'>
+                      <IconBan className='mr-1 h-3 w-3' />
                       Cancelled
                     </SessionBadge>
                   )}
                   {isConcluded && !session.cancelled && (
-                    <SessionBadge variant="muted">Concluded</SessionBadge>
+                    <SessionBadge variant='muted'>Concluded</SessionBadge>
                   )}
                   {!isConcluded &&
                     !session.cancelled &&
                     currentStatus &&
-                    currentStatus !== "Open" && (
-                      <SessionBadge variant="status">{currentStatus}</SessionBadge>
+                    currentStatus !== 'Open' && (
+                      <SessionBadge variant='status'>{currentStatus}</SessionBadge>
                     )}
                 </div>
               </div>
             </div>
           </div>
           <button
-            type="button"
+            type='button'
             onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+            className='rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
           >
-            <IconX className="h-5 w-5" stroke={1.75} />
+            <IconX
+              className='h-5 w-5'
+              stroke={1.75}
+            />
           </button>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+        <div className='flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6'>
           {session.sessionType.description && (
-            <SessionSection title="Description">
+            <SessionSection title='Description'>
               <SessionInset>
-                <div className="prose prose-sm max-w-none text-zinc-600 dark:prose-invert dark:text-zinc-300">
+                <div className='prose prose-sm max-w-none text-zinc-600 dark:prose-invert dark:text-zinc-300'>
                   <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
                     {session.sessionType.description}
                   </ReactMarkdown>
@@ -593,23 +559,24 @@ const SessionModal: React.FC<SessionModalProps> = ({
             </SessionSection>
           )}
 
-          <SessionSection title="Role Claims">
-            <div className="space-y-2.5">
+          <SessionSection title='Role Claims'>
+            <div className='space-y-2.5'>
               <SessionInset>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <h4 className='mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400'>
                   Host
                 </h4>
-                <div className="flex items-center gap-2">
-                  <span className="w-14 shrink-0 text-xs text-zinc-400">Slot 1</span>
-                  <div className="min-w-0 flex-1">
+                <div className='flex items-center gap-2'>
+                  <span className='w-14 shrink-0 text-xs text-zinc-400'>Slot 1</span>
+                  <div className='min-w-0 flex-1'>
                     <HostButton
-                      currentValue={session.owner?.username || ""}
+                      currentValue={session.owner?.username || ''}
                       onValueChange={handleHostClaim}
                       isSubmitting={isSubmitting}
                       canEdit={
                         canManage ||
                         canAssignUsers(workspace.yourPermission, session.type) ||
-                        canHostSession(workspace.yourPermission, session.type) || workspace.yourPermission.includes("admin")
+                        canHostSession(workspace.yourPermission, session.type) ||
+                        workspace.yourPermission.includes('admin')
                       }
                       availableUsers={availableUsers}
                       currentUserId={login.userId}
@@ -628,76 +595,76 @@ const SessionModal: React.FC<SessionModalProps> = ({
               {session.sessionType.slots &&
                 Array.isArray(session.sessionType.slots) &&
                 session.sessionType.slots.length > 0 &&
-                session.sessionType.slots.map(
-                  (slot: any, slotIndex: number) => {
-                    if (typeof slot !== "object") return null;
-                    const slotData = JSON.parse(JSON.stringify(slot));
+                session.sessionType.slots.map((slot: any, slotIndex: number) => {
+                  if (typeof slot !== 'object') return null;
+                  const slotData = JSON.parse(JSON.stringify(slot));
 
-                    return (
-                      <SessionInset key={slotIndex}>
-                        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                          {slotData.name}
-                        </h4>
-                        <div className="space-y-2">
-                          {Array.from(Array(slotData.slots)).map((_, i) => {
-                            const key = `${slotData.id}-${i}`;
-                            const assignedUser = session.users?.find(
-                              (u: any) =>
-                                u.roleID === slotData.id && u.slot === i
-                            );
-                            const username = assignedUser
-                              ? availableUsers.find(
-                                  (user: any) =>
-                                    user.userid ===
-                                    assignedUser.userid.toString()
-                                )?.username
-                              : null;
-                            const userPicture = assignedUser
-                              ? availableUsers.find(
-                                  (user: any) =>
-                                    user.userid ===
-                                    assignedUser.userid.toString()
-                                )?.picture
-                              : null;
-                            return (
-                              <div key={i} className="flex items-center gap-2">
-                                <span className="w-14 shrink-0 text-xs text-zinc-400">
-                                  Slot {i + 1}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <RoleButton
-                                    currentValue={username || ""}
-                                    onValueChange={(value) =>
-                                      handleSlotClaim(slotData.id, i, value)
-                                    }
-                                    isSubmitting={isSubmitting}
-                                    canEdit={
-                                      canManage ||
-                                      canAssignUsers(workspace.yourPermission, session.type) ||
-                                      workspace.yourPermission.includes("admin") ||
-                                      (slotData.name === "Host" || slotData.name.toLowerCase() === "co-host" 
-                                        ? canHostSession(workspace.yourPermission, session.type) || workspace.yourPermission.includes("admin")
-                                        : canClaimSelf(workspace.yourPermission, session.type) || workspace.yourPermission.includes("admin"))
-                                    }
-                                    availableUsers={availableUsers}
-                                    currentUserId={login.userId}
-                                    currentUserPicture={login.thumbnail}
-                                    currentUserUsername={login.username}
-                                    assignedUserPicture={userPicture}
-                                    assignedUserId={assignedUser?.userid?.toString()}
-                                    workspace={workspace}
-                                    isHostRole={slotData.name === "Host" || slotData.name.toLowerCase() === "co-host"}
-                                    sessionType={session.type}
-                                  />
-                                </div>
+                  return (
+                    <SessionInset key={slotIndex}>
+                      <h4 className='mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400'>
+                        {slotData.name}
+                      </h4>
+                      <div className='space-y-2'>
+                        {Array.from(Array(slotData.slots)).map((_, i) => {
+                          const key = `${slotData.id}-${i}`;
+                          const assignedUser = session.users?.find(
+                            (u: any) => u.roleID === slotData.id && u.slot === i,
+                          );
+                          const username = assignedUser
+                            ? availableUsers.find(
+                                (user: any) => user.userid === assignedUser.userid.toString(),
+                              )?.username
+                            : null;
+                          const userPicture = assignedUser
+                            ? availableUsers.find(
+                                (user: any) => user.userid === assignedUser.userid.toString(),
+                              )?.picture
+                            : null;
+                          return (
+                            <div
+                              key={i}
+                              className='flex items-center gap-2'
+                            >
+                              <span className='w-14 shrink-0 text-xs text-zinc-400'>
+                                Slot {i + 1}
+                              </span>
+                              <div className='min-w-0 flex-1'>
+                                <RoleButton
+                                  currentValue={username || ''}
+                                  onValueChange={(value) => handleSlotClaim(slotData.id, i, value)}
+                                  isSubmitting={isSubmitting}
+                                  canEdit={
+                                    canManage ||
+                                    canAssignUsers(workspace.yourPermission, session.type) ||
+                                    workspace.yourPermission.includes('admin') ||
+                                    (slotData.name === 'Host' ||
+                                    slotData.name.toLowerCase() === 'co-host'
+                                      ? canHostSession(workspace.yourPermission, session.type) ||
+                                        workspace.yourPermission.includes('admin')
+                                      : canClaimSelf(workspace.yourPermission, session.type) ||
+                                        workspace.yourPermission.includes('admin'))
+                                  }
+                                  availableUsers={availableUsers}
+                                  currentUserId={login.userId}
+                                  currentUserPicture={login.thumbnail}
+                                  currentUserUsername={login.username}
+                                  assignedUserPicture={userPicture}
+                                  assignedUserId={assignedUser?.userid?.toString()}
+                                  workspace={workspace}
+                                  isHostRole={
+                                    slotData.name === 'Host' ||
+                                    slotData.name.toLowerCase() === 'co-host'
+                                  }
+                                  sessionType={session.type}
+                                />
                               </div>
-                            );
-                          })}
-                        </div>
-                      </SessionInset>
-                    );
-                  }
-                )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </SessionInset>
+                  );
+                })}
             </div>
           </SessionSection>
 
@@ -709,67 +676,83 @@ const SessionModal: React.FC<SessionModalProps> = ({
             onDataChange={refreshSessionData}
           />
 
-          <ActivityLogsSection sessionId={session.id} refreshKey={refreshKey} />
+          <ActivityLogsSection
+            sessionId={session.id}
+            refreshKey={refreshKey}
+          />
 
           {session.cancelled && session.cancellationReason && (
-            <SessionInset className="border border-red-200/60 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/20">
-              <div className="mb-1 flex items-center gap-2">
-                <IconBan className="h-4 w-4 text-red-500" stroke={1.75} />
-                <span className="text-sm font-medium text-red-600 dark:text-red-400">
+            <SessionInset className='border border-red-200/60 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/20'>
+              <div className='mb-1 flex items-center gap-2'>
+                <IconBan
+                  className='h-4 w-4 text-red-500'
+                  stroke={1.75}
+                />
+                <span className='text-sm font-medium text-red-600 dark:text-red-400'>
                   Cancellation reason
                 </span>
               </div>
-              <p className="text-sm text-red-600/90 dark:text-red-300">
+              <p className='text-sm text-red-600/90 dark:text-red-300'>
                 {session.cancellationReason}
               </p>
-              <button onClick={handleUncancelSession} disabled={isUncancelling} className="mt-3 rounded-lg bg-red-600/20 text-red-200/90 px-4 py-1.5 text-sm font-medium transition-colors hover:bg-red-600/60 disabled:cursor-not-allowed disabled:opacity-50">
+              <button
+                onClick={handleUncancelSession}
+                disabled={isUncancelling}
+                className='mt-3 rounded-lg bg-red-600/20 text-red-200/90 px-4 py-1.5 text-sm font-medium transition-colors hover:bg-red-600/60 disabled:cursor-not-allowed disabled:opacity-50'
+              >
                 Uncancel Session
               </button>
             </SessionInset>
           )}
 
-          {(canManage || canCancel)  && !session.cancelled && (
+          {(canManage || canCancel) && !session.cancelled && (
             <SessionInset>
               {!isCancelExpanded ? (
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setIsCancelExpanded(true)}
-                  className="flex items-center gap-2 text-sm font-medium text-red-500 transition-colors hover:text-red-600 dark:hover:text-red-400"
+                  className='flex items-center gap-2 text-sm font-medium text-red-500 transition-colors hover:text-red-600 dark:hover:text-red-400'
                 >
-                  <IconBan className="h-4 w-4" stroke={1.75} />
+                  <IconBan
+                    className='h-4 w-4'
+                    stroke={1.75}
+                  />
                   Cancel this session
                 </button>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconAlertTriangle className="h-4 w-4 shrink-0 text-red-500" stroke={1.75} />
-                    <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                <div className='space-y-3'>
+                  <div className='flex items-center gap-2'>
+                    <IconAlertTriangle
+                      className='h-4 w-4 shrink-0 text-red-500'
+                      stroke={1.75}
+                    />
+                    <span className='text-sm font-medium text-zinc-900 dark:text-white'>
                       Cancel session
                     </span>
                   </div>
                   <textarea
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="Reason for cancellation..."
+                    placeholder='Reason for cancellation...'
                     rows={3}
-                    className="w-full resize-none rounded-xl border-0 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/40 dark:bg-zinc-900 dark:text-white"
+                    className='w-full resize-none rounded-xl border-0 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/40 dark:bg-zinc-900 dark:text-white'
                   />
-                  <div className="flex items-center gap-2">
+                  <div className='flex items-center gap-2'>
                     <button
-                      type="button"
+                      type='button'
                       onClick={handleCancelSession}
                       disabled={!cancelReason.trim() || isCancelling}
-                      className="rounded-lg bg-red-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className='rounded-lg bg-red-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50'
                     >
-                      {isCancelling ? "Cancelling…" : "Confirm cancel"}
+                      {isCancelling ? 'Cancelling…' : 'Confirm cancel'}
                     </button>
                     <button
-                      type="button"
+                      type='button'
                       onClick={() => {
                         setIsCancelExpanded(false);
-                        setCancelReason("");
+                        setCancelReason('');
                       }}
-                      className="rounded-lg px-4 py-1.5 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                      className='rounded-lg px-4 py-1.5 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300'
                     >
                       Keep session
                     </button>
@@ -809,7 +792,7 @@ const AutocompleteInput: React.FC<{
   currentUserId,
   currentUserPicture,
   currentUserUsername,
-  placeholder = "Enter username",
+  placeholder = 'Enter username',
   assignedUserPicture,
   assignedUserId,
   isHostRole = false,
@@ -826,10 +809,16 @@ const AutocompleteInput: React.FC<{
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const hasPermissionToEdit = () => {
     if (!workspace) return canEdit;
-    const hasAssignPermission = canAssignUsers(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-    const hasClaimPermission = canClaimSelf(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-    const hasHostPermission = canHostSession(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-    
+    const hasAssignPermission =
+      canAssignUsers(workspace.yourPermission, sessionType) ||
+      workspace.yourPermission.includes('admin');
+    const hasClaimPermission =
+      canClaimSelf(workspace.yourPermission, sessionType) ||
+      workspace.yourPermission.includes('admin');
+    const hasHostPermission =
+      canHostSession(workspace.yourPermission, sessionType) ||
+      workspace.yourPermission.includes('admin');
+
     if (isHostRole) {
       // Host roles require the host permission (assign alone is NOT enough)
       return hasHostPermission;
@@ -845,18 +834,21 @@ const AutocompleteInput: React.FC<{
   }, [currentValue]);
 
   useEffect(() => {
-    const userHasAssignPermission = canAssignUsers(workspace?.yourPermission || [], sessionType) || workspace?.yourPermission?.includes("admin") || false;
+    const userHasAssignPermission =
+      canAssignUsers(workspace?.yourPermission || [], sessionType) ||
+      workspace?.yourPermission?.includes('admin') ||
+      false;
     let usersForSuggestions = availableUsers;
-    
+
     if (!userHasAssignPermission) {
       usersForSuggestions = availableUsers.filter(
-        (user) => user.userid.toString() === currentUserId.toString()
+        (user) => user.userid.toString() === currentUserId.toString(),
       );
     }
-    
+
     let suggestions = [];
-    if (assignedUserId && currentValue.trim() !== "") {
-      const assignedUser = availableUsers.find(user => user.userid.toString() === assignedUserId);
+    if (assignedUserId && currentValue.trim() !== '') {
+      const assignedUser = availableUsers.find((user) => user.userid.toString() === assignedUserId);
       if (assignedUser) {
         suggestions.push({
           ...assignedUser,
@@ -865,24 +857,24 @@ const AutocompleteInput: React.FC<{
         });
       }
     }
-    
-    if (inputValue.trim() === "") {
+
+    if (inputValue.trim() === '') {
       const isCurrentUserAssigned = assignedUserId === currentUserId.toString();
       if (currentUserUsername && !isCurrentUserAssigned) {
         suggestions.push({
           userid: currentUserId.toString(),
           username: currentUserUsername,
-          picture: currentUserPicture || "/default-avatar.jpg",
+          picture: currentUserPicture || '/default-avatar.jpg',
           isSelf: true,
         });
       }
-      
+
       const otherUsers = usersForSuggestions.filter(
-        (user) => 
+        (user) =>
           user.userid.toString() !== currentUserId.toString() &&
-          user.userid.toString() !== assignedUserId
+          user.userid.toString() !== assignedUserId,
       );
-      
+
       suggestions.push(...otherUsers.slice(0, 7));
     } else {
       const filtered = usersForSuggestions
@@ -897,12 +889,12 @@ const AutocompleteInput: React.FC<{
           isCurrentlyAssigned: user.userid.toString() === assignedUserId,
         }))
         .slice(0, 8);
-      suggestions = suggestions.filter(existing => 
-        !filtered.some(user => user.userid === existing.userid)
+      suggestions = suggestions.filter(
+        (existing) => !filtered.some((user) => user.userid === existing.userid),
       );
       suggestions.push(...filtered);
     }
-    
+
     setFilteredUsers(suggestions);
   }, [
     inputValue,
@@ -917,13 +909,19 @@ const AutocompleteInput: React.FC<{
 
   const canAssignToUser = (targetUsername: string) => {
     if (!workspace) return true;
-    const hasAssignPermission = canAssignUsers(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-    const hasClaimPermission = canClaimSelf(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-    const hasHostPermission = canHostSession(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-    const targetUser = availableUsers.find(user => user.username === targetUsername);
+    const hasAssignPermission =
+      canAssignUsers(workspace.yourPermission, sessionType) ||
+      workspace.yourPermission.includes('admin');
+    const hasClaimPermission =
+      canClaimSelf(workspace.yourPermission, sessionType) ||
+      workspace.yourPermission.includes('admin');
+    const hasHostPermission =
+      canHostSession(workspace.yourPermission, sessionType) ||
+      workspace.yourPermission.includes('admin');
+    const targetUser = availableUsers.find((user) => user.username === targetUsername);
     if (!targetUser) return false;
     const isAssigningToSelf = targetUser.userid.toString() === currentUserId.toString();
-    
+
     if (isHostRole) {
       // Host roles require host permission
       if (isAssigningToSelf) {
@@ -941,12 +939,12 @@ const AutocompleteInput: React.FC<{
         return true;
       }
     }
-    
+
     return false;
   };
 
   const handleSubmit = () => {
-    if (inputValue.trim() === "" || canAssignToUser(inputValue)) {
+    if (inputValue.trim() === '' || canAssignToUser(inputValue)) {
       onValueChange(inputValue);
     } else {
       setInputValue(currentValue);
@@ -977,20 +975,20 @@ const AutocompleteInput: React.FC<{
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex((prev) => Math.min(prev + 1, filteredUsers.length - 1));
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((prev) => Math.max(prev - 1, -1));
-    } else if (e.key === "Enter") {
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       if (selectedIndex >= 0 && filteredUsers[selectedIndex]) {
         handleUserSelect(filteredUsers[selectedIndex]);
       } else {
         handleSubmit();
       }
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       handleCancel();
     }
   };
@@ -1017,28 +1015,24 @@ const AutocompleteInput: React.FC<{
 
   if (!actualCanEdit) {
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-zinc-100 px-3 py-2 dark:bg-zinc-800/80">
+      <div className='flex items-center gap-2 rounded-xl bg-zinc-100 px-3 py-2 dark:bg-zinc-800/80'>
         {currentValue && assignedUserId && (
           <div
             className={clsx(
-              "flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full",
-              getRandomBg(assignedUserId)
+              'flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full',
+              getRandomBg(assignedUserId),
             )}
           >
             <img
-              src={sessionAvatarSrc(
-                assignedUserId,
-                assignedUserPicture,
-                workspace?.groupId
-              )}
+              src={sessionAvatarSrc(assignedUserId, assignedUserPicture, workspace?.groupId)}
               alt={currentValue}
-              className="h-6 w-6 rounded-full border-2 border-white object-cover dark:border-zinc-900"
-              style={{ background: "transparent" }}
+              className='h-6 w-6 rounded-full border-2 border-white object-cover dark:border-zinc-900'
+              style={{ background: 'transparent' }}
             />
           </div>
         )}
-        <span className="text-sm text-zinc-700 dark:text-zinc-200">
-          {currentValue || "No assignment"}
+        <span className='text-sm text-zinc-700 dark:text-zinc-200'>
+          {currentValue || 'No assignment'}
         </span>
       </div>
     );
@@ -1046,25 +1040,25 @@ const AutocompleteInput: React.FC<{
 
   if (isEditing) {
     return (
-      <div className="relative">
-        <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
+      <div className='relative'>
+        <div className='flex items-center gap-2'>
+          <div className='relative min-w-0 flex-1'>
             <input
               ref={inputRef}
-              type="text"
+              type='text'
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
               placeholder={placeholder}
-              className="w-full rounded-xl border-0 bg-zinc-100 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+              className='w-full rounded-xl border-0 bg-zinc-100 px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500'
               disabled={isSubmitting}
               autoFocus
             />
 
             {showSuggestions && filteredUsers.length > 0 && (
-              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-zinc-200/80 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+              <div className='absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-zinc-200/80 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900'>
                 {filteredUsers.map((user, index) => (
                   <div
                     key={user.userid}
@@ -1072,59 +1066,57 @@ const AutocompleteInput: React.FC<{
                       suggestionRefs.current[index] = el;
                     }}
                     className={clsx(
-                      "flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800",
-                      selectedIndex === index && "bg-zinc-50 dark:bg-zinc-800"
+                      'flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800',
+                      selectedIndex === index && 'bg-zinc-50 dark:bg-zinc-800',
                     )}
                     onClick={() => handleUserSelect(user)}
                   >
                     <div
                       className={clsx(
-                        "flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full",
-                        getRandomBg(user.userid.toString(), user.username)
+                        'flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full',
+                        getRandomBg(user.userid.toString(), user.username),
                       )}
                     >
                       <img
                         src={sessionAvatarSrc(
                           user.userid.toString(),
                           user.picture,
-                          workspace?.groupId
+                          workspace?.groupId,
                         )}
                         alt={user.username}
-                        className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-zinc-900"
-                        style={{ background: "transparent" }}
+                        className='h-8 w-8 rounded-full border-2 border-white object-cover dark:border-zinc-900'
+                        style={{ background: 'transparent' }}
                       />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-zinc-900 dark:text-white">
+                    <div className='min-w-0 flex-1'>
+                      <div className='text-sm font-medium text-zinc-900 dark:text-white'>
                         {user.username}
                         {user.isSelf && (
-                          <span className="ml-2 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                          <span className='ml-2 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary'>
                             You
                           </span>
                         )}
                       </div>
                     </div>
-                    {user.isSelf && (
-                      <span className="text-xs text-zinc-400">Claim</span>
-                    )}
+                    {user.isSelf && <span className='text-xs text-zinc-400'>Claim</span>}
                   </div>
                 ))}
               </div>
             )}
           </div>
           <button
-            type="button"
+            type='button'
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className='rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50'
           >
             Save
           </button>
           <button
-            type="button"
+            type='button'
             onClick={handleCancel}
             disabled={isSubmitting}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            className='rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300'
           >
             Cancel
           </button>
@@ -1135,78 +1127,83 @@ const AutocompleteInput: React.FC<{
 
   return (
     <div
-      role="button"
+      role='button'
       tabIndex={0}
       onKeyDown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && !isSubmitting && actualCanEdit)
+        if ((e.key === 'Enter' || e.key === ' ') && !isSubmitting && actualCanEdit)
           setIsEditing(true);
       }}
       onClick={() => {
         if (!isSubmitting && actualCanEdit) setIsEditing(true);
       }}
-      className="w-full rounded-xl bg-zinc-100 px-3 py-2 text-left transition-colors outline-none hover:bg-zinc-200/70 disabled:opacity-50 dark:bg-zinc-800/80 dark:hover:bg-zinc-800"
+      className='w-full rounded-xl bg-zinc-100 px-3 py-2 text-left transition-colors outline-none hover:bg-zinc-200/70 disabled:opacity-50 dark:bg-zinc-800/80 dark:hover:bg-zinc-800'
     >
-      <div className="flex w-full items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center">
+      <div className='flex w-full items-center gap-2'>
+        <div className='flex min-w-0 flex-1 items-center'>
           {currentValue && assignedUserId && (
             <div
               className={clsx(
-                "flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full",
-                getRandomBg(assignedUserId)
+                'flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full',
+                getRandomBg(assignedUserId),
               )}
             >
               <img
-                src={sessionAvatarSrc(
-                  assignedUserId,
-                  assignedUserPicture,
-                  workspace?.groupId
-                )}
+                src={sessionAvatarSrc(assignedUserId, assignedUserPicture, workspace?.groupId)}
                 alt={currentValue}
-                className="h-6 w-6 rounded-full border-2 border-white object-cover dark:border-zinc-900"
-                style={{ background: "transparent" }}
+                className='h-6 w-6 rounded-full border-2 border-white object-cover dark:border-zinc-900'
+                style={{ background: 'transparent' }}
               />
             </div>
           )}
-          <span className="ml-2 text-sm text-zinc-700 dark:text-zinc-200">
-            {currentValue || "Unclaimed"}
+          <span className='ml-2 text-sm text-zinc-700 dark:text-zinc-200'>
+            {currentValue || 'Unclaimed'}
           </span>
         </div>
 
         {currentValue && canRemove && (
           <span
-            role="button"
-            title="Remove assignment"
+            role='button'
+            title='Remove assignment'
             onClick={(e) => {
               e.stopPropagation();
               if (!isSubmitting && actualCanEdit) {
                 const canRemoveAssignment = () => {
                   if (!workspace) return true;
-                  
-                  const hasAssignPermission = canAssignUsers(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
+
+                  const hasAssignPermission =
+                    canAssignUsers(workspace.yourPermission, sessionType) ||
+                    workspace.yourPermission.includes('admin');
                   const isAssignedToSelf = assignedUserId?.toString() === currentUserId.toString();
-                  
+
                   if (isHostRole) {
                     // Host roles require host permission (assign + host for others, just host for self)
-                    const hasHostPermission = canHostSession(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
+                    const hasHostPermission =
+                      canHostSession(workspace.yourPermission, sessionType) ||
+                      workspace.yourPermission.includes('admin');
                     if (isAssignedToSelf) {
                       return hasHostPermission;
                     } else {
                       return hasAssignPermission && hasHostPermission;
                     }
                   } else {
-                    const hasClaimPermission = canClaimSelf(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
+                    const hasClaimPermission =
+                      canClaimSelf(workspace.yourPermission, sessionType) ||
+                      workspace.yourPermission.includes('admin');
                     return hasAssignPermission || (hasClaimPermission && isAssignedToSelf);
                   }
                 };
-                
+
                 if (canRemoveAssignment()) {
-                  onValueChange("");
+                  onValueChange('');
                 }
               }
             }}
-            className="ml-2 cursor-pointer rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-200/70 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+            className='ml-2 cursor-pointer rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-200/70 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-200'
           >
-            <IconX className="h-4 w-4" stroke={1.75} />
+            <IconX
+              className='h-4 w-4'
+              stroke={1.75}
+            />
           </span>
         )}
       </div>
@@ -1244,19 +1241,23 @@ const HostButton: React.FC<{
   sessionType,
 }) => {
   const filteredUsers = availableUsers;
-const canRemoveHost = workspace ? 
-    (() => {
-      const hasAssignPermission = canAssignUsers(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-      const hasHostPermission = canHostSession(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-      const isCurrentUserAssigned = assignedUserId === currentUserId.toString();
-      
-      // Host roles require host permission (assign + host for others, just host for self)
-      if (isCurrentUserAssigned) {
-        return hasHostPermission;
-      } else {
-        return hasAssignPermission && hasHostPermission;
-      }
-    })()
+  const canRemoveHost = workspace
+    ? (() => {
+        const hasAssignPermission =
+          canAssignUsers(workspace.yourPermission, sessionType) ||
+          workspace.yourPermission.includes('admin');
+        const hasHostPermission =
+          canHostSession(workspace.yourPermission, sessionType) ||
+          workspace.yourPermission.includes('admin');
+        const isCurrentUserAssigned = assignedUserId === currentUserId.toString();
+
+        // Host roles require host permission (assign + host for others, just host for self)
+        if (isCurrentUserAssigned) {
+          return hasHostPermission;
+        } else {
+          return hasAssignPermission && hasHostPermission;
+        }
+      })()
     : true;
 
   return (
@@ -1269,7 +1270,7 @@ const canRemoveHost = workspace ?
       currentUserId={currentUserId}
       currentUserPicture={currentUserPicture}
       currentUserUsername={currentUserUsername}
-      placeholder="Enter username to assign host"
+      placeholder='Enter username to assign host'
       assignedUserPicture={assignedUserPicture}
       assignedUserId={assignedUserId}
       isHostRole={isHostRole}
@@ -1310,23 +1311,29 @@ const RoleButton: React.FC<{
   sessionType,
 }) => {
   const filteredUsers = availableUsers;
-  const canRemoveRole = workspace ? 
-    (() => {
-      const hasAssignPermission = canAssignUsers(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-      const isCurrentUserAssigned = assignedUserId === currentUserId.toString();
-      if (isHostRole) {
-        // Host roles require host permission (assign + host for others, just host for self)
-        const hasHostPermission = canHostSession(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-        if (isCurrentUserAssigned) {
-          return hasHostPermission;
+  const canRemoveRole = workspace
+    ? (() => {
+        const hasAssignPermission =
+          canAssignUsers(workspace.yourPermission, sessionType) ||
+          workspace.yourPermission.includes('admin');
+        const isCurrentUserAssigned = assignedUserId === currentUserId.toString();
+        if (isHostRole) {
+          // Host roles require host permission (assign + host for others, just host for self)
+          const hasHostPermission =
+            canHostSession(workspace.yourPermission, sessionType) ||
+            workspace.yourPermission.includes('admin');
+          if (isCurrentUserAssigned) {
+            return hasHostPermission;
+          } else {
+            return hasAssignPermission && hasHostPermission;
+          }
         } else {
-          return hasAssignPermission && hasHostPermission;
+          const hasClaimPermission =
+            canClaimSelf(workspace.yourPermission, sessionType) ||
+            workspace.yourPermission.includes('admin');
+          return hasAssignPermission || (hasClaimPermission && isCurrentUserAssigned);
         }
-      } else {
-        const hasClaimPermission = canClaimSelf(workspace.yourPermission, sessionType) || workspace.yourPermission.includes("admin");
-        return hasAssignPermission || (hasClaimPermission && isCurrentUserAssigned);
-      }
-    })()
+      })()
     : true;
 
   return (
@@ -1339,7 +1346,7 @@ const RoleButton: React.FC<{
       currentUserId={currentUserId}
       currentUserPicture={currentUserPicture}
       currentUserUsername={currentUserUsername}
-      placeholder="Enter username to assign role"
+      placeholder='Enter username to assign role'
       assignedUserPicture={assignedUserPicture}
       assignedUserId={assignedUserId}
       isHostRole={isHostRole}
@@ -1358,7 +1365,7 @@ const NotesSection: React.FC<{
   onDataChange?: () => void;
 }> = ({ sessionId, canManage, currentUser, refreshKey, onDataChange }) => {
   const [notes, setNotes] = useState<any[]>([]);
-  const [newNote, setNewNote] = useState("");
+  const [newNote, setNewNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -1367,11 +1374,11 @@ const NotesSection: React.FC<{
     try {
       setIsLoading(true);
       const response = await axios.get(
-        `/api/workspace/${router.query.id}/sessions/${sessionId}/notes`
+        `/api/workspace/${router.query.id}/sessions/${sessionId}/notes`,
       );
       setNotes(response.data.notes || []);
     } catch (error) {
-      console.error("Failed to fetch notes:", error);
+      console.error('Failed to fetch notes:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1382,19 +1389,16 @@ const NotesSection: React.FC<{
 
     try {
       setIsSubmitting(true);
-      await axios.post(
-        `/api/workspace/${router.query.id}/sessions/${sessionId}/notes`,
-        {
-          content: newNote.trim(),
-        }
-      );
-      setNewNote("");
+      await axios.post(`/api/workspace/${router.query.id}/sessions/${sessionId}/notes`, {
+        content: newNote.trim(),
+      });
+      setNewNote('');
       fetchNotes();
       onDataChange?.();
-      toast.success("Note added successfully");
+      toast.success('Note added successfully');
     } catch (error: any) {
-      console.error("Failed to add note:", error);
-      toast.error(error?.response?.data?.error || "Failed to add note");
+      console.error('Failed to add note:', error);
+      toast.error(error?.response?.data?.error || 'Failed to add note');
     } finally {
       setIsSubmitting(false);
     }
@@ -1407,26 +1411,32 @@ const NotesSection: React.FC<{
   }, [sessionId, refreshKey]);
 
   return (
-    <SessionSection title="Notes" icon={IconNotes}>
+    <SessionSection
+      title='Notes'
+      icon={IconNotes}
+    >
       {canManage && (
-        <div className="mb-3">
-          <div className="flex flex-col gap-2">
+        <div className='mb-3'>
+          <div className='flex flex-col gap-2'>
             <textarea
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
-              placeholder="Add a note about this session..."
-              className="flex-1 resize-none rounded-xl border-0 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+              placeholder='Add a note about this session...'
+              className='flex-1 resize-none rounded-xl border-0 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500'
               rows={2}
               disabled={isSubmitting}
             />
-            <div className="flex items-center">
+            <div className='flex items-center'>
               <button
-                type="button"
+                type='button'
                 onClick={addNote}
                 disabled={isSubmitting || !newNote.trim()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50'
               >
-                <IconSend className="h-4 w-4" stroke={1.75} />
+                <IconSend
+                  className='h-4 w-4'
+                  stroke={1.75}
+                />
                 Add note
               </button>
             </div>
@@ -1434,49 +1444,53 @@ const NotesSection: React.FC<{
         </div>
       )}
 
-      <div className="max-h-60 space-y-2 overflow-y-auto">
+      <div className='max-h-60 space-y-2 overflow-y-auto'>
         {isLoading ? (
-          <div className="py-4 text-center text-sm text-zinc-400">Loading notes…</div>
+          <div className='py-4 text-center text-sm text-zinc-400'>Loading notes…</div>
         ) : notes.length === 0 ? (
-          <SessionInset className="py-8 text-center">
-            <IconNotes className="mx-auto mb-2 h-7 w-7 text-zinc-300 dark:text-zinc-600" stroke={1.5} />
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No notes yet</p>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              {canManage ? "Add the first note above" : "Notes will appear here when added"}
+          <SessionInset className='py-8 text-center'>
+            <IconNotes
+              className='mx-auto mb-2 h-7 w-7 text-zinc-300 dark:text-zinc-600'
+              stroke={1.5}
+            />
+            <p className='text-sm text-zinc-500 dark:text-zinc-400'>No notes yet</p>
+            <p className='mt-0.5 text-xs text-zinc-400'>
+              {canManage ? 'Add the first note above' : 'Notes will appear here when added'}
             </p>
           </SessionInset>
         ) : (
           notes.map((note) => (
-            <SessionInset key={note.id} className="p-3">
-              <div className="mb-2 flex items-center gap-2">
+            <SessionInset
+              key={note.id}
+              className='p-3'
+            >
+              <div className='mb-2 flex items-center gap-2'>
                 <div
                   className={clsx(
-                    "flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full",
-                    getRandomBg(note.author?.userid?.toString() || "", note.author?.username)
+                    'flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full',
+                    getRandomBg(note.author?.userid?.toString() || '', note.author?.username),
                   )}
                 >
                   <img
                     src={sessionAvatarSrc(
                       note.author?.userid?.toString(),
                       note.author?.picture,
-                      Number(router.query.id)
+                      Number(router.query.id),
                     )}
-                    alt={note.author?.username || "User"}
-                    className="h-6 w-6 rounded-full border-2 border-white object-cover dark:border-zinc-900"
-                    style={{ background: "transparent" }}
+                    alt={note.author?.username || 'User'}
+                    className='h-6 w-6 rounded-full border-2 border-white object-cover dark:border-zinc-900'
+                    style={{ background: 'transparent' }}
                   />
                 </div>
-                <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                  {note.author?.username || "Unknown User"}
+                <span className='text-sm font-medium text-zinc-900 dark:text-white'>
+                  {note.author?.username || 'Unknown User'}
                 </span>
-                <span className="text-xs text-zinc-400">
+                <span className='text-xs text-zinc-400'>
                   {new Date(note.createdAt).toLocaleString()}
                 </span>
               </div>
-              <div className="prose prose-sm max-w-none text-zinc-600 dark:prose-invert dark:text-zinc-300">
-                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                  {note.content}
-                </ReactMarkdown>
+              <div className='prose prose-sm max-w-none text-zinc-600 dark:prose-invert dark:text-zinc-300'>
+                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{note.content}</ReactMarkdown>
               </div>
             </SessionInset>
           ))
@@ -1498,11 +1512,11 @@ const ActivityLogsSection: React.FC<{
     try {
       setIsLoading(true);
       const response = await axios.get(
-        `/api/workspace/${router.query.id}/sessions/${sessionId}/logs`
+        `/api/workspace/${router.query.id}/sessions/${sessionId}/logs`,
       );
       setLogs(response.data.logs || []);
     } catch (error) {
-      console.error("Failed to fetch logs:", error);
+      console.error('Failed to fetch logs:', error);
     } finally {
       setIsLoading(false);
     }
@@ -1516,37 +1530,37 @@ const ActivityLogsSection: React.FC<{
 
   const getLogIcon = (action: string) => {
     switch (action) {
-      case "role_assigned":
-      case "host_assigned":
-        return <IconUserPlus className="w-4 h-4 text-green-500" />;
-      case "role_unassigned":
-      case "host_unassigned":
-        return <IconUserMinus className="w-4 h-4 text-red-500" />;
-      case "session_claimed":
-        return <IconUserCheck className="w-4 h-4 text-blue-500" />;
+      case 'role_assigned':
+      case 'host_assigned':
+        return <IconUserPlus className='w-4 h-4 text-green-500' />;
+      case 'role_unassigned':
+      case 'host_unassigned':
+        return <IconUserMinus className='w-4 h-4 text-red-500' />;
+      case 'session_claimed':
+        return <IconUserCheck className='w-4 h-4 text-blue-500' />;
       default:
-        return <IconHistory className="w-4 h-4 text-zinc-500" />;
+        return <IconHistory className='w-4 h-4 text-zinc-500' />;
     }
   };
 
   const getLogMessage = (log: any) => {
-    const actorName = log.actor?.username || "Unknown User";
-    const targetName = log.target?.username || "Unknown User";
+    const actorName = log.actor?.username || 'Unknown User';
+    const targetName = log.target?.username || 'Unknown User';
 
     switch (log.action) {
-      case "role_assigned":
+      case 'role_assigned':
         return `${actorName} assigned ${targetName} to role "${
-          log.metadata?.roleName || "Unknown Role"
+          log.metadata?.roleName || 'Unknown Role'
         }"`;
-      case "role_unassigned":
+      case 'role_unassigned':
         return `${actorName} removed ${targetName} from role "${
-          log.metadata?.roleName || "Unknown Role"
+          log.metadata?.roleName || 'Unknown Role'
         }"`;
-      case "host_assigned":
+      case 'host_assigned':
         return `${actorName} assigned ${targetName} as "Host"`;
-      case "host_unassigned":
+      case 'host_unassigned':
         return `${actorName} removed ${targetName} as "Host"`;
-      case "session_claimed":
+      case 'session_claimed':
         return `${actorName} claimed this session`;
       default:
         return `${actorName} performed an action`;
@@ -1554,27 +1568,34 @@ const ActivityLogsSection: React.FC<{
   };
 
   return (
-    <SessionSection title="Activity log" icon={IconHistory}>
-      <div className="max-h-60 space-y-2 overflow-y-auto">
+    <SessionSection
+      title='Activity log'
+      icon={IconHistory}
+    >
+      <div className='max-h-60 space-y-2 overflow-y-auto'>
         {isLoading ? (
-          <div className="py-4 text-center text-sm text-zinc-400">Loading activity…</div>
+          <div className='py-4 text-center text-sm text-zinc-400'>Loading activity…</div>
         ) : logs.length === 0 ? (
-          <SessionInset className="py-8 text-center">
-            <IconHistory className="mx-auto mb-2 h-7 w-7 text-zinc-300 dark:text-zinc-600" stroke={1.5} />
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No activity yet</p>
-            <p className="mt-0.5 text-xs text-zinc-400">
+          <SessionInset className='py-8 text-center'>
+            <IconHistory
+              className='mx-auto mb-2 h-7 w-7 text-zinc-300 dark:text-zinc-600'
+              stroke={1.5}
+            />
+            <p className='text-sm text-zinc-500 dark:text-zinc-400'>No activity yet</p>
+            <p className='mt-0.5 text-xs text-zinc-400'>
               Actions will be logged here automatically
             </p>
           </SessionInset>
         ) : (
           logs.map((log) => (
-            <SessionInset key={log.id} className="flex items-start gap-3 p-3">
+            <SessionInset
+              key={log.id}
+              className='flex items-start gap-3 p-3'
+            >
               {getLogIcon(log.action)}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {getLogMessage(log)}
-                </p>
-                <p className="mt-1 text-xs text-zinc-400">
+              <div className='min-w-0 flex-1'>
+                <p className='text-sm text-zinc-700 dark:text-zinc-300'>{getLogMessage(log)}</p>
+                <p className='mt-1 text-xs text-zinc-400'>
                   {new Date(log.createdAt).toLocaleString()}
                 </p>
               </div>
