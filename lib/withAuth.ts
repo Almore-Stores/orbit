@@ -1,6 +1,5 @@
-import * as crypto from 'crypto';
-
 import { validateApiKey } from '@/utils/api-auth';
+import { clearSessionCookie } from '@/utils/authCookies';
 import { getConfig } from '@/utils/configEngine';
 import prisma from '@/utils/database';
 import { getSessionByToken } from '@/utils/session';
@@ -17,7 +16,10 @@ import zxcvbn from 'zxcvbn';
 import { verifyWorkspace } from './security';
 
 if (process.env.NODE_ENV === 'production') {
-  const secret = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error('SESSION_SECRET must be configured in production');
+  }
 
   if (secret === 'supersecretpassword') {
     throw new Error('SESSION_SECRET must be changed from the default secret in production');
@@ -52,6 +54,30 @@ export interface APIRequest extends NextApiRequest {
   workspaceId?: bigint;
 }
 
+// The board key is shipped inside the downloadable planetaryboard.rbxmx model,
+// so treat it as public and only accept it on the endpoints that model calls.
+const BOARD_KEY_PATH_PATTERNS = [
+  /^\/api\/public\/v1\/workspace\/([^/]+)\/info$/,
+  /^\/api\/public\/v1\/workspace\/([^/]+)\/sessions\/upcoming$/,
+];
+const BOARD_KEY_QUERY_PARAMS = new Set(['id', 'category']);
+
+function isBoardKeyRequestAllowed(req: NextApiRequest, workspaceId?: number): boolean {
+  if (!workspaceId || req.method !== 'GET' || !req.url) return false;
+
+  if (Object.keys(req.query).some((param) => !BOARD_KEY_QUERY_PARAMS.has(param))) return false;
+
+  try {
+    const pathname = new URL(req.url, 'http://localhost').pathname.replace(/\/+$/, '');
+    const match = BOARD_KEY_PATH_PATTERNS.map((pattern) => pathname.match(pattern)).find(Boolean);
+    if (!match) return false;
+
+    return Number(decodeURIComponent(match[1])) === workspaceId;
+  } catch {
+    return false;
+  }
+}
+
 export function withAuth(
   handler: (req: AuthenticatedRequest, res: NextApiResponse) => any,
 ): NextApiHandler {
@@ -74,12 +100,7 @@ export function withAuth(
       const session = await getSessionByToken(cookies.session_token);
 
       if (!session) {
-        res.setHeader(
-          'Set-Cookie',
-          ['session_token=', 'Path=/', 'HttpOnly', 'SameSite=lax', 'Secure', 'Max-Age=0'].join(
-            '; ',
-          ),
-        );
+        clearSessionCookie(res);
 
         return res.status(401).json({
           success: false,
@@ -152,7 +173,7 @@ export function withKey(
         }
       }
 
-      if (!authenticated) {
+      if (!authenticated && isBoardKeyRequestAllowed(req, workspaceId)) {
         const secretKey = await getConfig('board_key', workspaceId as number);
         if (secretKey?.key && secretKey.key === auth) {
           authenticated = true;
@@ -210,12 +231,7 @@ export function withAuthSsr<
       const session = await getSessionByToken(token);
 
       if (!session) {
-        context.res.setHeader(
-          'Set-Cookie',
-          ['session_token=', 'Path=/', 'HttpOnly', 'SameSite=lax', 'Secure', 'Max-Age=0'].join(
-            '; ',
-          ),
-        );
+        clearSessionCookie(context.res as NextApiResponse);
 
         return {
           redirect: {
